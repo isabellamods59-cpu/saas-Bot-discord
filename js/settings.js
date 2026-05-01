@@ -1,178 +1,139 @@
 /* ============================================================
-   NexaBots — Settings page
+   NexaBots V2 — Configurações
    ============================================================ */
 (function (global) {
   'use strict';
+  const Settings = {
+    async init(ctx) {
+      if (!ctx) return;
+      const { content, user } = ctx;
 
-  function init() {
-    const user = Auth.currentUser();
-    if (!user) return;
-    const main = document.querySelector('.content');
-    if (!main) return;
-
-    function render() {
-      const s = DB.meta.getSettings();
-      main.innerHTML = `
-        <div class="page-header">
+      content.innerHTML = `
+        <div class="page-head">
           <div>
-            <h1>Configurações</h1>
-            <p class="subtitle">Personalize a sua experiência no NexaBots.</p>
+            <h1 class="page-title">Configurações</h1>
+            <p class="page-sub">Ajuste tema, preferências e gerencie seus dados.</p>
           </div>
         </div>
 
-        <div class="grid" style="grid-template-columns: 1fr 1fr; gap:16px;">
-          <div class="card animate-in">
-            <div class="card-title">${Icons.svg('sun')} Aparência</div>
-            <div class="card-subtitle">Escolha como você prefere visualizar a interface</div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header"><h3>Aparência</h3></div>
             <div class="setting-row">
               <div>
-                <div class="label">Tema escuro</div>
-                <div class="desc">Use o modo escuro para reduzir o cansaço visual.</div>
+                <div class="label">Tema</div>
+                <div class="desc">Escuro (recomendado) ou claro.</div>
               </div>
-              <div class="switch ${s.theme === 'dark' ? 'on' : ''}" data-toggle="theme"></div>
+              <div class="seg" id="theme-seg">
+                <button data-theme="dark" class="seg-btn">${Icons.svg('moon')} Escuro</button>
+                <button data-theme="light" class="seg-btn">${Icons.svg('sun')} Claro</button>
+              </div>
             </div>
             <div class="setting-row">
               <div>
-                <div class="label">Sidebar recolhida</div>
-                <div class="desc">Inicie sempre com a sidebar minimizada (mais espaço).</div>
+                <div class="label">Sidebar</div>
+                <div class="desc">Comportamento padrão da barra lateral.</div>
               </div>
-              <div class="switch ${s.sidebarCollapsed ? 'on' : ''}" data-toggle="sidebar"></div>
-            </div>
-          </div>
-
-          <div class="card animate-in" style="animation-delay:.05s">
-            <div class="card-title">${Icons.svg('bell')} Notificações</div>
-            <div class="card-subtitle">Quando você quer ser avisado(a)</div>
-            <div class="setting-row">
-              <div>
-                <div class="label">Notificações in-app</div>
-                <div class="desc">Receba avisos sobre atualizações de pedidos.</div>
+              <div class="seg" id="sidebar-seg">
+                <button data-sb="false" class="seg-btn">Expandida</button>
+                <button data-sb="true" class="seg-btn">Recolhida</button>
               </div>
-              <div class="switch ${s.notifications ? 'on' : ''}" data-toggle="notifications"></div>
-            </div>
-            <div class="setting-row">
-              <div>
-                <div class="label">Som ao receber notificações</div>
-                <div class="desc">Toque um som curto a cada novo aviso.</div>
-              </div>
-              <div class="switch ${s.sound ? 'on' : ''}" data-toggle="sound"></div>
             </div>
           </div>
 
-          <div class="card animate-in" style="animation-delay:.1s">
-            <div class="card-title">${Icons.svg('globe')} Idioma e região</div>
-            <div class="card-subtitle">A interface é exibida no idioma selecionado</div>
+          <div class="card">
+            <div class="card-header"><h3>Notificações</h3></div>
             <div class="setting-row">
               <div>
-                <div class="label">Idioma</div>
-                <div class="desc">Atualmente disponível em Português (Brasil).</div>
+                <div class="label">Notificações no app</div>
+                <div class="desc">Receber alertas em tempo real.</div>
               </div>
-              <select class="select" style="max-width:200px;" disabled>
-                <option>Português (Brasil)</option>
-              </select>
+              <label class="switch">
+                <input type="checkbox" id="opt-notif" />
+                <span class="slider"></span>
+              </label>
             </div>
             <div class="setting-row">
               <div>
-                <div class="label">Moeda</div>
-                <div class="desc">Os preços são exibidos em Real brasileiro.</div>
+                <div class="label">Sons</div>
+                <div class="desc">Efeitos sonoros suaves.</div>
               </div>
-              <select class="select" style="max-width:200px;" disabled>
-                <option>BRL — Real (R$)</option>
-              </select>
+              <label class="switch">
+                <input type="checkbox" id="opt-sound" />
+                <span class="slider"></span>
+              </label>
             </div>
           </div>
 
-          <div class="card animate-in" style="animation-delay:.15s">
-            <div class="card-title">${Icons.svg('terminal')} Dados e privacidade</div>
-            <div class="card-subtitle">Exporte ou apague seus dados locais</div>
+          <div class="card span-2">
+            <div class="card-header"><h3>Backend</h3></div>
             <div class="setting-row">
               <div>
-                <div class="label">Exportar meus dados</div>
-                <div class="desc">Baixe um arquivo JSON com tudo o que está salvo localmente.</div>
+                <div class="label">Modo</div>
+                <div class="desc">${window.Nexa?.isReady() ? 'Conectado ao Supabase. Seus dados são persistidos no servidor.' : 'Modo demonstração — dados só ficam no navegador.'}</div>
               </div>
-              <button class="btn btn-ghost" data-action="export-data">${Icons.svg('upload')} Exportar</button>
+              ${window.Nexa?.isReady()
+                ? '<span class="env-pill env-live"><span class="dot"></span> Live</span>'
+                : '<span class="env-pill env-demo"><span class="dot"></span> Demo</span>'}
             </div>
             <div class="setting-row">
               <div>
-                <div class="label">Limpar minha atividade</div>
-                <div class="desc">Apaga o histórico de atividade da sua conta.</div>
+                <div class="label">Limpar dados locais</div>
+                <div class="desc">Apaga preferências e cache local. Não afeta dados do servidor.</div>
               </div>
-              <button class="btn btn-danger" data-action="clear-activity">${Icons.svg('trash')} Limpar</button>
+              <button class="btn btn-danger btn-sm" id="clear-local">${Icons.svg('trash')} Limpar local</button>
             </div>
             <div class="setting-row">
               <div>
-                <div class="label">Resetar dados de demonstração</div>
-                <div class="desc">Apaga TODAS as contas, pedidos, planos e bots locais. Use com cuidado.</div>
+                <div class="label">Encerrar sessão</div>
+                <div class="desc">Faz logout em todas as abas deste navegador.</div>
               </div>
-              <button class="btn btn-danger" data-action="nuke">${Icons.svg('refresh')} Resetar tudo</button>
+              <button class="btn btn-ghost btn-sm" id="logout-btn">${Icons.svg('logout')} Sair</button>
             </div>
           </div>
         </div>
       `;
-      bind();
-      Icons.hydrate(main);
-    }
+      Icons.hydrate(content);
 
-    function bind() {
-      main.querySelectorAll('[data-toggle]').forEach((sw) => {
-        sw.addEventListener('click', () => {
-          const key = sw.dataset.toggle;
-          const s = DB.meta.getSettings();
-          if (key === 'theme') {
-            UI.toggleTheme();
-          } else if (key === 'sidebar') {
-            const newCollapsed = !s.sidebarCollapsed;
-            UI.applySidebar(newCollapsed);
-          } else {
-            s[key] = !s[key];
-            DB.meta.setSettings(s);
-          }
-          UI.toast.success('Configuração atualizada.');
-          render();
+      const prefs = UI.getPrefs();
+      const themeSeg = content.querySelector('#theme-seg');
+      themeSeg.querySelectorAll('[data-theme]').forEach((b) => {
+        b.classList.toggle('active', b.dataset.theme === (prefs.theme || 'dark'));
+        b.addEventListener('click', () => {
+          UI.applyTheme(b.dataset.theme);
+          themeSeg.querySelectorAll('[data-theme]').forEach((x) => x.classList.toggle('active', x === b));
+          UI.toast.success('Tema atualizado.');
         });
       });
-
-      main.addEventListener('click', (e) => {
-        const action = e.target.closest('[data-action]')?.dataset.action;
-        if (!action) return;
-        if (action === 'export-data') {
-          const blob = new Blob([DB.exportAll()], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'nexabots-backup-' + new Date().toISOString().slice(0, 10) + '.json';
-          a.click();
-          URL.revokeObjectURL(url);
-          UI.toast.success('Backup gerado!');
-        } else if (action === 'clear-activity') {
-          UI.confirm({
-            title: 'Limpar atividade',
-            message: 'Apagar todo o histórico da sua conta? Essa ação não pode ser desfeita.',
-            danger: true,
-          }).then((ok) => {
-            if (!ok) return;
-            Activity.clearForUser(user.id);
-            UI.toast.success('Histórico apagado.');
-            render();
-          });
-        } else if (action === 'nuke') {
-          UI.confirm({
-            title: 'Resetar TODOS os dados',
-            message: 'Tem certeza? Essa ação apaga todas as contas e pedidos locais. Você precisará criar uma nova conta.',
-            confirmText: 'Apagar tudo',
-            danger: true,
-          }).then((ok) => {
-            if (!ok) return;
-            DB.nuke();
-            UI.toast.warn('Dados apagados. Redirecionando...');
-            setTimeout(() => window.location.replace('index.html'), 800);
-          });
-        }
+      const sbSeg = content.querySelector('#sidebar-seg');
+      sbSeg.querySelectorAll('[data-sb]').forEach((b) => {
+        const isCollapsed = b.dataset.sb === 'true';
+        b.classList.toggle('active', isCollapsed === !!prefs.sidebarCollapsed);
+        b.addEventListener('click', () => {
+          UI.applySidebar(isCollapsed);
+          sbSeg.querySelectorAll('[data-sb]').forEach((x) => x.classList.toggle('active', x === b));
+          UI.toast.success('Preferência salva.');
+        });
       });
-    }
+      const optN = content.querySelector('#opt-notif');
+      optN.checked = prefs.inAppNotifications !== false;
+      optN.addEventListener('change', () => UI.setPrefs({ inAppNotifications: optN.checked }));
+      const optS = content.querySelector('#opt-sound');
+      optS.checked = prefs.sound !== false;
+      optS.addEventListener('change', () => UI.setPrefs({ sound: optS.checked }));
 
-    render();
-  }
-
-  global.Settings = { init };
+      content.querySelector('#clear-local').addEventListener('click', async () => {
+        const ok = await UI.confirm({ title: 'Limpar dados locais', message: 'Isso apaga apenas dados deste navegador (preferências, cache demo). Continuar?', danger: true });
+        if (!ok) return;
+        Object.keys(localStorage).filter((k) => k.startsWith('nexa.')).forEach((k) => localStorage.removeItem(k));
+        UI.toast.success('Dados locais apagados. Recarregando...');
+        setTimeout(() => location.reload(), 700);
+      });
+      content.querySelector('#logout-btn').addEventListener('click', async () => {
+        await Auth.logout();
+        location.replace('index.html');
+      });
+    },
+  };
+  global.Settings = Settings;
 })(window);

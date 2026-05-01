@@ -1,565 +1,515 @@
 /* ============================================================
-   NexaBots — Admin panel
+   NexaBots V2 — Painel Admin
+   Tabs: Visão geral, Usuários, Pedidos, Produtos, Logs
    ============================================================ */
 (function (global) {
   'use strict';
 
-  const STATUSES = ['pendente', 'aprovado', 'entregue', 'cancelado'];
+  let me = null;
+  let contentEl = null;
+  let activeTab = 'overview';
 
-  function init() {
-    const me = Auth.currentUser();
-    if (!me || me.role !== 'admin') return;
-    const main = document.querySelector('.content');
-    if (!main) return;
+  // caches
+  let users = [];
+  let products = [];
+  let purchases = [];
+  let logs = [];
 
-    main.innerHTML = `
-      <div class="page-header">
-        <div>
-          <h1 class="flex items-center gap-3">${Icons.svg('shield')} Painel Administrativo</h1>
-          <p class="subtitle">Controle completo da plataforma — usuários, compras, atividades e mais.</p>
-        </div>
-        <div class="flex gap-2">
-          <button class="btn btn-ghost" data-action="export">${Icons.svg('upload')} Exportar dados</button>
-          <button class="btn btn-danger" data-action="nuke">${Icons.svg('refresh')} Resetar plataforma</button>
-        </div>
-      </div>
+  const Admin = {
+    async init(ctx) {
+      if (!ctx) return;
+      me = ctx.user;
+      contentEl = ctx.content;
 
-      <div class="admin-stats" data-stats></div>
+      contentEl.innerHTML = `
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">Painel Admin</h1>
+            <p class="page-sub">Gerencie usuários, pedidos, produtos e veja o que rola na plataforma.</p>
+          </div>
+          <div class="page-actions">
+            <span class="badge badge-soft"><span data-icon="shield"></span> Modo: ${window.Nexa?.isReady() ? 'Live (Supabase)' : 'Demo (LocalStorage)'}</span>
+          </div>
+        </div>
 
-      <div class="tabs mb-6" id="admin-tabs">
-        <button class="tab active" data-tab="users">${Icons.svg('users')} Usuários</button>
-        <button class="tab" data-tab="orders">${Icons.svg('purchases')} Compras</button>
-        <button class="tab" data-tab="plans">${Icons.svg('plans')} Planos</button>
-        <button class="tab" data-tab="bots">${Icons.svg('bot')} Bots</button>
-        <button class="tab" data-tab="activity">${Icons.svg('activity')} Atividade</button>
-      </div>
+        <div class="tabs">
+          <button class="tab" data-tab="overview">${Icons.svg('dashboard')} Visão geral</button>
+          <button class="tab" data-tab="users">${Icons.svg('users')} Usuários</button>
+          <button class="tab" data-tab="orders">${Icons.svg('purchases')} Pedidos</button>
+          <button class="tab" data-tab="products">${Icons.svg('store')} Produtos</button>
+          <button class="tab" data-tab="logs">${Icons.svg('activity')} Logs</button>
+        </div>
 
-      <div data-panel></div>
-    `;
-
-    let tab = 'users';
-    function renderStats() {
-      const u = DB.users.count();
-      const o = DB.orders.count();
-      const revenue = DB.orders.all().filter((x) => x.status !== 'cancelado').reduce((s, x) => s + (x.price || 0), 0);
-      const pending = DB.orders.filter((x) => x.status === 'pendente').length;
-      main.querySelector('[data-stats]').innerHTML = `
-        <div class="card card-stat">
-          <span class="stat-icon">${Icons.svg('users')}</span>
-          <span class="stat-label">Usuários</span>
-          <span class="stat-value">${u}</span>
-          <span class="stat-trend up">${Icons.svg('trendingUp')} Total cadastrado</span>
-        </div>
-        <div class="card card-stat">
-          <span class="stat-icon">${Icons.svg('purchases')}</span>
-          <span class="stat-label">Pedidos</span>
-          <span class="stat-value">${o}</span>
-          <span class="stat-trend up">${pending} pendente${pending !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="card card-stat">
-          <span class="stat-icon">${Icons.svg('dollar')}</span>
-          <span class="stat-label">Receita simulada</span>
-          <span class="stat-value" style="font-size:22px;">${UI.formatBRL(revenue)}</span>
-          <span class="stat-trend up">${Icons.svg('trendingUp')} Excluindo cancelados</span>
-        </div>
-        <div class="card card-stat">
-          <span class="stat-icon">${Icons.svg('activity')}</span>
-          <span class="stat-label">Eventos</span>
-          <span class="stat-value">${DB.activity.count()}</span>
-          <span class="stat-trend up">Atividade total registrada</span>
-        </div>
+        <div id="tab-content"></div>
       `;
-      Icons.hydrate(main.querySelector('[data-stats]'));
-    }
-    function renderPanel() {
-      const wrap = main.querySelector('[data-panel]');
-      if (tab === 'users') wrap.innerHTML = renderUsers();
-      else if (tab === 'orders') wrap.innerHTML = renderOrders();
-      else if (tab === 'plans') wrap.innerHTML = renderPlans();
-      else if (tab === 'bots') wrap.innerHTML = renderBots();
-      else if (tab === 'activity') wrap.innerHTML = renderActivity();
-      Icons.hydrate(wrap);
-    }
+      Icons.hydrate(contentEl);
 
-    main.querySelectorAll('#admin-tabs .tab').forEach((t) => {
-      t.addEventListener('click', () => {
-        main.querySelectorAll('#admin-tabs .tab').forEach((x) => x.classList.remove('active'));
-        t.classList.add('active');
-        tab = t.dataset.tab;
-        renderPanel();
+      contentEl.querySelectorAll('[data-tab]').forEach((b) => {
+        b.addEventListener('click', () => switchTab(b.dataset.tab));
       });
-    });
+      switchTab('overview');
+    },
+  };
 
-    main.addEventListener('click', (e) => {
-      const action = e.target.closest('[data-action]')?.dataset.action;
-      if (action === 'export') {
-        const blob = new Blob([DB.exportAll()], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'nexabots-export-' + new Date().toISOString().slice(0, 10) + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        UI.toast.success('Backup gerado!');
-        return;
-      }
-      if (action === 'nuke') {
-        UI.confirm({ title: 'Resetar plataforma', message: 'Apagar TODOS os dados (usuários, pedidos, planos)? Essa ação não pode ser desfeita.', danger: true, confirmText: 'Apagar tudo' })
-          .then((ok) => {
-            if (!ok) return;
-            DB.nuke();
-            UI.toast.warn('Plataforma resetada. Redirecionando...');
-            setTimeout(() => window.location.replace('index.html'), 700);
-          });
-        return;
-      }
-
-      // Users actions
-      const editUser = e.target.closest('[data-edit-user]');
-      const delUser = e.target.closest('[data-del-user]');
-      const promoteUser = e.target.closest('[data-promote-user]');
-      if (editUser) return openEditUser(editUser.dataset.editUser);
-      if (delUser) return doDeleteUser(delUser.dataset.delUser);
-      if (promoteUser) return doToggleAdmin(promoteUser.dataset.promoteUser);
-
-      // Orders actions
-      const orderStatus = e.target.closest('[data-order-status]');
-      const orderDel = e.target.closest('[data-order-del]');
-      const orderDetail = e.target.closest('[data-order-detail]');
-      if (orderStatus) return openChangeStatus(orderStatus.dataset.orderStatus);
-      if (orderDel) return doDeleteOrder(orderDel.dataset.orderDel);
-      if (orderDetail) return openOrderDetail(orderDetail.dataset.orderDetail);
-
-      // Plans
-      const editPlan = e.target.closest('[data-edit-plan]');
-      const delPlan = e.target.closest('[data-del-plan]');
-      const newPlan = e.target.closest('[data-new-plan]');
-      if (editPlan) return openEditPlan(editPlan.dataset.editPlan);
-      if (delPlan) return doDeletePlan(delPlan.dataset.delPlan);
-      if (newPlan) return openEditPlan(null);
-
-      // Bots
-      const editBot = e.target.closest('[data-edit-bot]');
-      const delBot = e.target.closest('[data-del-bot]');
-      const newBot = e.target.closest('[data-new-bot]');
-      if (editBot) return openEditBot(editBot.dataset.editBot);
-      if (delBot) return doDeleteBot(delBot.dataset.delBot);
-      if (newBot) return openEditBot(null);
-
-      // Activity
-      const clearAct = e.target.closest('[data-clear-activity]');
-      if (clearAct) {
-        UI.confirm({ title: 'Limpar log', message: 'Apagar todo o histórico de atividade da plataforma?', danger: true })
-          .then((ok) => { if (!ok) return; DB.activity.clear(); renderPanel(); UI.toast.success('Atividade limpa.'); });
-      }
-    });
-
-    // Search
-    main.addEventListener('input', (e) => {
-      if (e.target.matches('[data-admin-search]')) {
-        const q = e.target.value.trim().toLowerCase();
-        main.querySelectorAll('[data-row]').forEach((r) => {
-          const txt = r.dataset.searchText || r.textContent.toLowerCase();
-          r.style.display = !q || txt.includes(q) ? '' : 'none';
-        });
-      }
-    });
-
-    // ---- Renderers ----
-    function renderUsers() {
-      const users = DB.users.all().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      return `
-        <div class="card">
-          <div class="toolbar">
-            <h3 style="margin:0;font-size:16px;">${users.length} usuário${users.length !== 1 ? 's' : ''}</h3>
-            <div class="search-field">${Icons.svg('search')}<input class="input" placeholder="Buscar por nome, e-mail..." data-admin-search /></div>
-          </div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Usuário</th><th>E-mail</th><th>Função</th><th>Cadastro</th><th>Ações</th></tr></thead>
-              <tbody>
-                ${users.map((u) => `
-                  <tr data-row data-search-text="${UI.escapeHtml((u.username + ' ' + (u.displayName||'') + ' ' + u.email).toLowerCase())}">
-                    <td>
-                      <div class="flex items-center gap-3">
-                        ${UI.renderAvatar(u, 'sm')}
-                        <div>
-                          <div style="font-weight:600;">${UI.escapeHtml(u.displayName || u.username)}</div>
-                          <div class="muted" style="font-size:12px;">@${UI.escapeHtml(u.username)}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>${UI.escapeHtml(u.email)}</td>
-                    <td>${u.role === 'admin' ? '<span class="badge badge-purple no-dot">Administrador</span>' : '<span class="badge badge-info no-dot">Usuário</span>'}</td>
-                    <td>${UI.formatDate(u.createdAt, { day:'2-digit', month:'short', year:'numeric' })}</td>
-                    <td class="cell-actions">
-                      <button class="btn btn-sm btn-ghost" data-edit-user="${u.id}" title="Editar">${Icons.svg('edit')}</button>
-                      <button class="btn btn-sm btn-ghost" data-promote-user="${u.id}" title="${u.role === 'admin' ? 'Remover admin' : 'Tornar admin'}">${Icons.svg('crown')}</button>
-                      <button class="btn btn-sm btn-danger" data-del-user="${u.id}" title="Excluir">${Icons.svg('trash')}</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
+  async function switchTab(tab) {
+    activeTab = tab;
+    contentEl.querySelectorAll('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+    const root = contentEl.querySelector('#tab-content');
+    root.innerHTML = `<div class="card" style="padding:30px;">${UI.skeleton(3, 'row')}</div>`;
+    try {
+      if (tab === 'overview') await renderOverview(root);
+      else if (tab === 'users') await renderUsers(root);
+      else if (tab === 'orders') await renderOrders(root);
+      else if (tab === 'products') await renderProducts(root);
+      else if (tab === 'logs') await renderLogs(root);
+    } catch (err) {
+      console.error('[Admin] erro:', err);
+      root.innerHTML = `<div class="card" style="padding:30px;">${Icons.svg('warn')} Erro ao carregar dados.</div>`;
+      Icons.hydrate(root);
     }
-
-    function renderOrders() {
-      const orders = DB.orders.all().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      return `
-        <div class="card">
-          <div class="toolbar">
-            <h3 style="margin:0;font-size:16px;">${orders.length} pedido${orders.length !== 1 ? 's' : ''}</h3>
-            <div class="search-field">${Icons.svg('search')}<input class="input" placeholder="Buscar por usuário ou plano..." data-admin-search /></div>
-          </div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>#ID</th><th>Cliente</th><th>Plano</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>
-                ${orders.length === 0 ? `<tr><td colspan="7"><div class="empty-state">${Icons.svg('shoppingBag')}<h3>Sem pedidos ainda</h3><p>Os pedidos dos usuários aparecerão aqui.</p></div></td></tr>` : orders.map((o) => {
-                  const u = DB.users.get(o.userId);
-                  return `
-                    <tr data-row data-search-text="${UI.escapeHtml(((u && u.username) || '') + ' ' + (o.planName || ''))}">
-                      <td><span class="code">#${o.id.slice(-6).toUpperCase()}</span></td>
-                      <td>
-                        <div class="flex items-center gap-2">
-                          ${u ? UI.renderAvatar(u, 'sm') : ''}
-                          <div>
-                            <div style="font-weight:600;">${UI.escapeHtml((u && (u.displayName || u.username)) || 'usuário removido')}</div>
-                            <div class="muted" style="font-size:11.5px;">@${UI.escapeHtml((u && u.username) || '—')}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>${UI.escapeHtml(o.planName)} <span class="muted" style="font-size:12px;">(${o.period === 'ano' ? 'Anual' : 'Mensal'})</span></td>
-                      <td>${UI.formatDate(o.createdAt, { day:'2-digit', month:'short', year:'numeric' })}</td>
-                      <td><strong>${UI.formatBRL(o.price)}</strong></td>
-                      <td>${Purchases.statusBadge(o.status)}</td>
-                      <td class="cell-actions">
-                        <button class="btn btn-sm btn-ghost" data-order-detail="${o.id}" title="Detalhes">${Icons.svg('eye')}</button>
-                        <button class="btn btn-sm btn-primary" data-order-status="${o.id}">Mudar status</button>
-                        <button class="btn btn-sm btn-danger" data-order-del="${o.id}">${Icons.svg('trash')}</button>
-                      </td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderPlans() {
-      const plans = DB.plans.all();
-      return `
-        <div class="card">
-          <div class="toolbar">
-            <h3 style="margin:0;font-size:16px;">${plans.length} plano${plans.length !== 1 ? 's' : ''}</h3>
-            <button class="btn btn-primary btn-sm" data-new-plan>${Icons.svg('plus')} Novo plano</button>
-          </div>
-          <div class="grid grid-plans">
-            ${plans.map((p) => `
-              <div class="card plan-card ${p.recommended ? 'recommended' : ''}">
-                <span class="plan-tag">${UI.escapeHtml(p.name)}</span>
-                <p class="muted" style="margin:0;font-size:13px;">${UI.escapeHtml(p.tagline)}</p>
-                <div class="plan-price">
-                  <span class="currency">R$</span>${(p.price || 0).toFixed(2).replace('.', ',')}
-                  <span class="period">/${p.period || 'mês'}</span>
-                </div>
-                <ul class="plan-features">
-                  ${(p.features || []).slice(0, 4).map((f) => `<li>${UI.escapeHtml(f)}</li>`).join('')}
-                </ul>
-                <div class="flex gap-2">
-                  <button class="btn btn-ghost btn-sm" data-edit-plan="${p.id}">${Icons.svg('edit')} Editar</button>
-                  <button class="btn btn-danger btn-sm" data-del-plan="${p.id}">${Icons.svg('trash')} Excluir</button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    function renderBots() {
-      const bots = DB.bots.all();
-      return `
-        <div class="card">
-          <div class="toolbar">
-            <h3 style="margin:0;font-size:16px;">${bots.length} bot${bots.length !== 1 ? 's' : ''} na loja</h3>
-            <button class="btn btn-primary btn-sm" data-new-bot>${Icons.svg('plus')} Novo bot</button>
-          </div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Bot</th><th>Categoria</th><th>Preço</th><th>Ações</th></tr></thead>
-              <tbody>
-                ${bots.map((b) => `
-                  <tr>
-                    <td>
-                      <div class="flex items-center gap-2">
-                        <span class="avatar sm">${Icons.svg(b.icon)}</span>
-                        <div>
-                          <div style="font-weight:600;">${UI.escapeHtml(b.name)}</div>
-                          <div class="muted" style="font-size:12px;">${UI.escapeHtml(b.desc.slice(0, 60))}...</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td><span class="badge badge-purple no-dot">${UI.escapeHtml(b.tag)}</span></td>
-                    <td><strong>${UI.formatBRL(b.price)}</strong></td>
-                    <td class="cell-actions">
-                      <button class="btn btn-sm btn-ghost" data-edit-bot="${b.id}">${Icons.svg('edit')}</button>
-                      <button class="btn btn-sm btn-danger" data-del-bot="${b.id}">${Icons.svg('trash')}</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderActivity() {
-      const list = Activity.listAll(200);
-      return `
-        <div class="card">
-          <div class="toolbar">
-            <h3 style="margin:0;font-size:16px;">Log de atividades (${list.length})</h3>
-            <div class="flex gap-2">
-              <div class="search-field">${Icons.svg('search')}<input class="input" placeholder="Buscar mensagem..." data-admin-search /></div>
-              <button class="btn btn-danger btn-sm" data-clear-activity>${Icons.svg('trash')} Limpar log</button>
-            </div>
-          </div>
-          ${list.length === 0 ? `<div class="empty-state">${Icons.svg('activity')}<h3>Sem atividade</h3><p>Eventos aparecerão aqui em tempo real.</p></div>` : `
-            <div class="activity-feed">
-              ${list.map((it) => {
-                const meta = Activity.getMeta(it.type);
-                const u = it.userId ? DB.users.get(it.userId) : null;
-                return `
-                  <div class="activity-item ${meta.class}" data-row data-search-text="${UI.escapeHtml((it.message + ' ' + ((u && u.username) || '')).toLowerCase())}">
-                    <span class="ico">${Icons.svg(meta.icon)}</span>
-                    <div class="body">
-                      <div class="msg">${u ? `<strong>@${UI.escapeHtml(u.username)}</strong> — ` : ''}${UI.escapeHtml(it.message)}</div>
-                      <div class="meta">${UI.formatDate(it.timestamp)} • ${UI.timeAgo(it.timestamp)}</div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          `}
-        </div>
-      `;
-    }
-
-    // ---- Modals ----
-    function openEditUser(id) {
-      const u = DB.users.get(id);
-      if (!u) return;
-      const m = UI.openModal({
-        title: 'Editar usuário @' + u.username,
-        body: `
-          <div class="field"><label class="field-label">Nome de exibição</label><input class="input" id="ed-display" value="${UI.escapeHtml(u.displayName || '')}" /></div>
-          <div class="field mt-4"><label class="field-label">E-mail</label><input class="input" id="ed-email" type="email" value="${UI.escapeHtml(u.email)}" /></div>
-          <div class="field mt-4"><label class="field-label">Função</label>
-            <select class="select" id="ed-role">
-              <option value="user" ${u.role === 'user' ? 'selected' : ''}>Usuário</option>
-              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
-            </select>
-          </div>
-        `,
-        footer: `<button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-primary" data-save>${Icons.svg('check')} Salvar</button>`,
-      });
-      Icons.hydrate(m.root);
-      m.root.querySelector('[data-save]').addEventListener('click', () => {
-        const patch = {
-          displayName: m.root.querySelector('#ed-display').value.trim(),
-          email: m.root.querySelector('#ed-email').value.trim().toLowerCase(),
-          role: m.root.querySelector('#ed-role').value,
-        };
-        if (!Auth.isValidEmail(patch.email)) { UI.toast.error('E-mail inválido.'); return; }
-        DB.users.update(id, patch);
-        Activity.log({ userId: me.id, type: 'admin', message: `Admin atualizou o usuário @${u.username}.` });
-        UI.toast.success('Usuário atualizado.');
-        m.close();
-        renderStats(); renderPanel();
-      });
-    }
-
-    function doDeleteUser(id) {
-      const u = DB.users.get(id);
-      if (!u) return;
-      if (u.id === me.id) { UI.toast.error('Você não pode excluir a si mesmo.'); return; }
-      UI.confirm({ title: 'Excluir usuário', message: `Excluir definitivamente @${u.username}? Os pedidos serão preservados.`, danger: true, confirmText: 'Excluir' })
-        .then((ok) => {
-          if (!ok) return;
-          DB.users.remove(id);
-          Activity.log({ userId: me.id, type: 'admin', message: `Admin excluiu o usuário @${u.username}.` });
-          UI.toast.warn('Usuário excluído.');
-          renderStats(); renderPanel();
-        });
-    }
-    function doToggleAdmin(id) {
-      const u = DB.users.get(id);
-      if (!u) return;
-      if (u.id === me.id) { UI.toast.error('Você não pode alterar sua própria função.'); return; }
-      const newRole = u.role === 'admin' ? 'user' : 'admin';
-      DB.users.update(id, { role: newRole });
-      Activity.log({ userId: me.id, type: 'admin', message: `Função de @${u.username} alterada para ${newRole}.` });
-      UI.toast.success('Função atualizada.');
-      renderPanel();
-    }
-
-    function openChangeStatus(id) {
-      const o = DB.orders.get(id);
-      if (!o) return;
-      const m = UI.openModal({
-        title: 'Mudar status do pedido',
-        body: `
-          <p class="muted" style="font-size:13.5px;">Pedido #${o.id.slice(-6).toUpperCase()} — ${UI.escapeHtml(o.planName)}</p>
-          <div class="flex gap-2 mt-4" style="flex-wrap:wrap;">
-            ${STATUSES.map((s) => `<button class="pill ${o.status === s ? 'active' : ''}" data-set-status="${s}">${UI.escapeHtml(s.charAt(0).toUpperCase() + s.slice(1))}</button>`).join('')}
-          </div>
-        `,
-        footer: `<button class="btn btn-ghost" data-close>Fechar</button>`,
-      });
-      m.root.querySelectorAll('[data-set-status]').forEach((b) => {
-        b.addEventListener('click', () => {
-          const newStatus = b.dataset.setStatus;
-          DB.orders.update(id, { status: newStatus });
-          Activity.log({ userId: me.id, type: 'admin', message: `Pedido #${o.id.slice(-6).toUpperCase()} marcado como ${newStatus}.`, data: { orderId: id } });
-          if (o.userId) Notifications.push({ userId: o.userId, title: 'Status atualizado', message: `Seu pedido foi marcado como "${newStatus}".`, type: newStatus === 'entregue' ? 'success' : newStatus === 'cancelado' ? 'warning' : 'info' });
-          UI.toast.success('Status atualizado.');
-          m.close();
-          renderStats(); renderPanel();
-        });
-      });
-    }
-    function doDeleteOrder(id) {
-      UI.confirm({ title: 'Excluir pedido', message: 'Apagar este pedido definitivamente?', danger: true })
-        .then((ok) => { if (!ok) return; DB.orders.remove(id); UI.toast.warn('Pedido excluído.'); renderStats(); renderPanel(); });
-    }
-    function openOrderDetail(id) {
-      const o = DB.orders.get(id);
-      if (!o) return;
-      const u = DB.users.get(o.userId);
-      UI.openModal({
-        title: 'Pedido #' + o.id.slice(-6).toUpperCase(),
-        body: `
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <div class="grid grid-2" style="gap:12px;font-size:13.5px;">
-              <div><span class="muted">Cliente:</span><br><strong>${u ? '@' + UI.escapeHtml(u.username) : '—'}</strong></div>
-              <div><span class="muted">Status:</span><br>${Purchases.statusBadge(o.status)}</div>
-              <div><span class="muted">Plano:</span><br><strong>${UI.escapeHtml(o.planName)}</strong></div>
-              <div><span class="muted">Período:</span><br><strong>${o.period === 'ano' ? 'Anual' : 'Mensal'}</strong></div>
-              <div><span class="muted">Valor:</span><br><strong>${UI.formatBRL(o.price)}</strong></div>
-              <div><span class="muted">Criado em:</span><br><strong>${UI.formatDate(o.createdAt)}</strong></div>
-            </div>
-            ${o.notes ? `<div><span class="muted">Notas:</span><div class="card" style="padding:12px;font-size:13px;margin-top:6px;">${UI.escapeHtml(o.notes)}</div></div>` : ''}
-          </div>
-        `,
-        footer: `<button class="btn btn-ghost" data-close>Fechar</button>`,
-      });
-    }
-
-    function openEditPlan(id) {
-      const p = id ? DB.plans.get(id) : { name: '', price: 0, period: 'mês', tagline: '', features: [], recommended: false };
-      const m = UI.openModal({
-        title: id ? 'Editar plano' : 'Novo plano',
-        size: 'lg',
-        body: `
-          <div class="grid grid-2" style="gap:12px;">
-            <div class="field"><label class="field-label">Nome</label><input class="input" id="p-name" value="${UI.escapeHtml(p.name)}" /></div>
-            <div class="field"><label class="field-label">Tagline</label><input class="input" id="p-tag" value="${UI.escapeHtml(p.tagline || '')}" /></div>
-            <div class="field"><label class="field-label">Preço (R$)</label><input class="input" id="p-price" type="number" step="0.01" value="${p.price}" /></div>
-            <div class="field"><label class="field-label">Período</label>
-              <select class="select" id="p-period"><option value="mês" ${p.period === 'mês' ? 'selected' : ''}>Mês</option><option value="ano" ${p.period === 'ano' ? 'selected' : ''}>Ano</option></select>
-            </div>
-          </div>
-          <div class="field mt-4"><label class="field-label">Recursos (1 por linha)</label><textarea class="input textarea" id="p-feat" rows="6">${UI.escapeHtml((p.features || []).join('\n'))}</textarea></div>
-          <label class="checkbox mt-4"><input type="checkbox" id="p-rec" ${p.recommended ? 'checked' : ''}><span class="box"></span><span>Marcar como recomendado</span></label>
-        `,
-        footer: `<button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-primary" data-save>${Icons.svg('check')} Salvar</button>`,
-      });
-      Icons.hydrate(m.root);
-      m.root.querySelector('[data-save]').addEventListener('click', () => {
-        const data = {
-          name: m.root.querySelector('#p-name').value.trim(),
-          tagline: m.root.querySelector('#p-tag').value.trim(),
-          price: parseFloat(m.root.querySelector('#p-price').value) || 0,
-          period: m.root.querySelector('#p-period').value,
-          features: m.root.querySelector('#p-feat').value.split('\n').map((s) => s.trim()).filter(Boolean),
-          recommended: m.root.querySelector('#p-rec').checked,
-        };
-        if (!data.name) { UI.toast.error('O nome é obrigatório.'); return; }
-        if (data.recommended) {
-          DB.plans.replaceAll(DB.plans.all().map((x) => Object.assign({}, x, { recommended: false })));
-        }
-        if (id) DB.plans.update(id, data);
-        else DB.plans.insert(data);
-        Activity.log({ userId: me.id, type: 'admin', message: id ? `Plano "${data.name}" atualizado.` : `Novo plano "${data.name}" criado.` });
-        UI.toast.success(id ? 'Plano atualizado.' : 'Plano criado.');
-        m.close();
-        renderPanel();
-      });
-    }
-    function doDeletePlan(id) {
-      const p = DB.plans.get(id);
-      if (!p) return;
-      UI.confirm({ title: 'Excluir plano', message: `Excluir o plano "${p.name}"?`, danger: true })
-        .then((ok) => { if (!ok) return; DB.plans.remove(id); UI.toast.warn('Plano excluído.'); renderPanel(); });
-    }
-
-    function openEditBot(id) {
-      const ICONS = ['music','shield2','coin','tag','trendingUp','gift','activity','gamepad','bot','sparkle','crown','heart'];
-      const b = id ? DB.bots.get(id) : { name: '', tag: '', price: 0, desc: '', icon: 'bot', popularity: '' };
-      const m = UI.openModal({
-        title: id ? 'Editar bot' : 'Novo bot',
-        size: 'lg',
-        body: `
-          <div class="grid grid-2" style="gap:12px;">
-            <div class="field"><label class="field-label">Nome</label><input class="input" id="b-name" value="${UI.escapeHtml(b.name)}" /></div>
-            <div class="field"><label class="field-label">Categoria</label><input class="input" id="b-tag" value="${UI.escapeHtml(b.tag)}" /></div>
-            <div class="field"><label class="field-label">Preço (R$)</label><input class="input" id="b-price" type="number" step="0.01" value="${b.price}" /></div>
-            <div class="field"><label class="field-label">Ícone</label>
-              <select class="select" id="b-icon">${ICONS.map((i) => `<option value="${i}" ${b.icon === i ? 'selected' : ''}>${i}</option>`).join('')}</select>
-            </div>
-          </div>
-          <div class="field mt-4"><label class="field-label">Descrição</label><textarea class="input textarea" id="b-desc" rows="4">${UI.escapeHtml(b.desc)}</textarea></div>
-          <div class="field mt-4"><label class="field-label">Selo (opcional)</label><input class="input" id="b-pop" placeholder="ex: Mais vendido" value="${UI.escapeHtml(b.popularity || '')}" /></div>
-        `,
-        footer: `<button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-primary" data-save>${Icons.svg('check')} Salvar</button>`,
-      });
-      Icons.hydrate(m.root);
-      m.root.querySelector('[data-save]').addEventListener('click', () => {
-        const data = {
-          name: m.root.querySelector('#b-name').value.trim(),
-          tag: m.root.querySelector('#b-tag').value.trim(),
-          price: parseFloat(m.root.querySelector('#b-price').value) || 0,
-          icon: m.root.querySelector('#b-icon').value,
-          desc: m.root.querySelector('#b-desc').value.trim(),
-          popularity: m.root.querySelector('#b-pop').value.trim(),
-        };
-        if (!data.name || !data.tag) { UI.toast.error('Nome e categoria são obrigatórios.'); return; }
-        if (id) DB.bots.update(id, data);
-        else DB.bots.insert(data);
-        Activity.log({ userId: me.id, type: 'admin', message: id ? `Bot "${data.name}" atualizado.` : `Novo bot "${data.name}" criado.` });
-        UI.toast.success(id ? 'Bot atualizado.' : 'Bot criado.');
-        m.close();
-        renderPanel();
-      });
-    }
-    function doDeleteBot(id) {
-      const b = DB.bots.get(id);
-      if (!b) return;
-      UI.confirm({ title: 'Excluir bot', message: `Excluir o bot "${b.name}" da loja?`, danger: true })
-        .then((ok) => { if (!ok) return; DB.bots.remove(id); UI.toast.warn('Bot excluído.'); renderPanel(); });
-    }
-
-    renderStats();
-    renderPanel();
-    Icons.hydrate(main);
   }
 
-  global.AdminPanel = { init };
+  /* --------------- OVERVIEW --------------- */
+  async function renderOverview(root) {
+    const [allUsers, allPurchases, recentLogs] = await Promise.all([
+      DB.profiles.all(), DB.purchases.all(), DB.activity.all(20),
+    ]);
+    users = allUsers; purchases = allPurchases; logs = recentLogs;
+
+    const totalRevenue = allPurchases
+      .filter((p) => p.status !== 'cancelado')
+      .reduce((s, p) => s + Number(p.price || 0), 0);
+    const pending = allPurchases.filter((p) => p.status === 'pendente').length;
+    const approved = allPurchases.filter((p) => p.status === 'aprovado').length;
+    const delivered = allPurchases.filter((p) => p.status === 'entregue').length;
+    const last7 = (() => {
+      const cutoff = Date.now() - 7 * 86400000;
+      return allPurchases.filter((p) => new Date(p.created_at).getTime() > cutoff);
+    })();
+
+    root.innerHTML = `
+      <div class="grid grid-4 mb-6">
+        <div class="metric"><div class="ring"></div>
+          <div class="label">Usuários</div><div class="value">${allUsers.length}</div>
+          <div class="delta up">${allUsers.filter((u) => u.role === 'admin').length} admins</div>
+        </div>
+        <div class="metric"><div class="ring"></div>
+          <div class="label">Pedidos totais</div><div class="value">${allPurchases.length}</div>
+          <div class="delta up">${last7.length} nos últimos 7 dias</div>
+        </div>
+        <div class="metric"><div class="ring"></div>
+          <div class="label">Pendentes</div><div class="value">${pending}</div>
+          <div class="delta">${approved} aprovados • ${delivered} entregues</div>
+        </div>
+        <div class="metric"><div class="ring"></div>
+          <div class="label">Receita</div><div class="value">${UI.formatBRL(totalRevenue)}</div>
+          <div class="delta up">acumulada</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3>Pedidos pendentes</h3><a class="link" data-jump="orders">Ver todos</a></div>
+          <div id="pend-list">${UI.skeleton(3, 'row')}</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Atividade recente</h3><a class="link" data-jump="logs">Ver tudo</a></div>
+          <div id="recent-logs"></div>
+        </div>
+      </div>
+    `;
+    Icons.hydrate(root);
+
+    const pendList = root.querySelector('#pend-list');
+    const pendingRows = allPurchases.filter((p) => p.status === 'pendente').slice(0, 5);
+    if (!pendingRows.length) {
+      pendList.innerHTML = `<div class="empty-state" style="padding:24px;">${Icons.svg('check')}<h3 style="font-size:14px;margin-top:6px;">Tudo em dia!</h3><p>Nenhum pedido pendente.</p></div>`;
+    } else {
+      pendList.innerHTML = pendingRows.map((p) => `
+        <div class="row-item">
+          <div class="row-left">
+            <span class="ico">${Icons.svg('shoppingBag')}</span>
+            <div>
+              <div class="ttl">${UI.escapeHtml(p.product_name)}</div>
+              <div class="sub">${userLabel(p.user_id, allUsers)} • ${UI.formatBRL(p.price)}</div>
+            </div>
+          </div>
+          ${UI.statusBadge(p.status)}
+        </div>
+      `).join('');
+    }
+    Icons.hydrate(pendList);
+
+    const recentLogsEl = root.querySelector('#recent-logs');
+    if (!recentLogs.length) {
+      recentLogsEl.innerHTML = `<div class="empty-state" style="padding:24px;">${Icons.svg('activity')}<p>Sem atividade ainda.</p></div>`;
+    } else {
+      recentLogsEl.innerHTML = recentLogs.slice(0, 8).map((l) => `
+        <div class="activity-item">
+          <span class="ico">${Icons.svg('activity')}</span>
+          <div style="flex:1;min-width:0;">
+            <div>${UI.escapeHtml(l.message || l.type)}</div>
+            <div class="time">${userLabel(l.user_id, allUsers)} • ${UI.timeAgo(l.created_at)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+    Icons.hydrate(recentLogsEl);
+
+    root.querySelectorAll('[data-jump]').forEach((a) => a.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab(a.dataset.jump);
+    }));
+  }
+
+  function userLabel(userId, list) {
+    const u = list.find((x) => x.id === userId);
+    return u ? UI.escapeHtml('@' + u.username) : '<span class="muted">desconhecido</span>';
+  }
+
+  /* --------------- USERS --------------- */
+  async function renderUsers(root) {
+    users = await DB.profiles.all();
+    let filter = '';
+    let roleFilter = 'todos';
+
+    function html() {
+      const list = users.filter((u) => {
+        if (roleFilter !== 'todos' && u.role !== roleFilter) return false;
+        if (filter && !((u.username || '') + (u.email || '') + (u.display_name || '')).toLowerCase().includes(filter)) return false;
+        return true;
+      });
+      return `
+        <div class="toolbar mb-4">
+          <div class="search-field">${Icons.svg('search')}<input class="input" id="u-search" placeholder="Buscar usuário..." value="${UI.escapeHtml(filter)}"/></div>
+          <select class="input" id="u-role">
+            <option value="todos">Todos</option>
+            <option value="admin">Admins</option>
+            <option value="user">Usuários</option>
+          </select>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table class="table">
+            <thead>
+              <tr><th>Usuário</th><th>E-mail</th><th>Função</th><th>Cadastro</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              ${list.length === 0 ? `<tr><td colspan="5" style="padding:32px;text-align:center;color:var(--text-2)">Nenhum usuário encontrado.</td></tr>` : list.map((u) => `
+                <tr data-id="${UI.escapeHtml(u.id)}">
+                  <td><div style="display:flex;align-items:center;gap:10px;">${UI.renderAvatar(u, 'sm')}<div><div style="font-weight:600;">${UI.escapeHtml(u.display_name || u.username)}</div><div class="muted" style="font-size:12px;">@${UI.escapeHtml(u.username)}</div></div></div></td>
+                  <td><span class="muted">${UI.escapeHtml(u.email || '—')}</span></td>
+                  <td>${u.role === 'admin' ? '<span class="badge badge-info">Admin</span>' : '<span class="badge badge-muted">Usuário</span>'}</td>
+                  <td><span class="muted">${UI.formatDate(u.created_at)}</span></td>
+                  <td>
+                    <button class="btn btn-sm btn-ghost" data-act="role">${u.role === 'admin' ? 'Remover admin' : 'Promover'}</button>
+                    ${u.id !== me.id ? `<button class="btn btn-sm btn-danger" data-act="del">${Icons.svg('trash')} Excluir</button>` : ''}
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    function render() { root.innerHTML = html(); Icons.hydrate(root); attach(); }
+    function attach() {
+      root.querySelector('#u-search').addEventListener('input', UI.debounce((e) => { filter = e.target.value.trim().toLowerCase(); render(); }, 200));
+      root.querySelector('#u-role').addEventListener('change', (e) => { roleFilter = e.target.value; render(); });
+      root.querySelectorAll('[data-act]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const tr = btn.closest('tr'); const id = tr?.dataset.id;
+          const target = users.find((u) => u.id === id);
+          if (!target) return;
+          if (btn.dataset.act === 'role') {
+            const newRole = target.role === 'admin' ? 'user' : 'admin';
+            try {
+              await DB.profiles.update(id, { role: newRole });
+              await Activity.record({ userId: me.id, type: 'admin_action', message: `Função de @${target.username} alterada para ${newRole}.` });
+              UI.toast.success('Função atualizada.');
+              users = await DB.profiles.all(); render();
+            } catch (err) { UI.toast.error(err?.message || 'Falha ao atualizar.'); }
+          } else if (btn.dataset.act === 'del') {
+            const ok = await UI.confirm({ title: 'Excluir usuário', message: `Apagar @${target.username}? Isso remove apenas o perfil. A conta de auth precisa ser apagada via Supabase Dashboard.`, danger: true, confirmText: 'Excluir' });
+            if (!ok) return;
+            try {
+              await DB.profiles.remove(id);
+              await Activity.record({ userId: me.id, type: 'admin_action', message: `Perfil de @${target.username} removido.` });
+              UI.toast.success('Perfil removido.');
+              users = await DB.profiles.all(); render();
+            } catch (err) { UI.toast.error(err?.message || 'Falha ao excluir.'); }
+          }
+        });
+      });
+    }
+    render();
+  }
+
+  /* --------------- ORDERS --------------- */
+  async function renderOrders(root) {
+    [purchases, users] = await Promise.all([DB.purchases.all(), DB.profiles.all()]);
+    let st = 'todos', cat = 'todos', q = '';
+    function html() {
+      const list = purchases.filter((p) => {
+        if (st !== 'todos' && p.status !== st) return false;
+        if (cat !== 'todos' && p.product_category !== cat) return false;
+        const u = users.find((u) => u.id === p.user_id);
+        const target = ((p.product_name || '') + ' ' + (u?.username || '') + ' ' + (u?.email || '')).toLowerCase();
+        if (q && !target.includes(q)) return false;
+        return true;
+      });
+      return `
+        <div class="toolbar mb-4">
+          <div class="search-field">${Icons.svg('search')}<input class="input" id="o-q" placeholder="Buscar..." value="${UI.escapeHtml(q)}"/></div>
+          <select class="input" id="o-status">
+            <option value="todos">Todos status</option>
+            <option value="pendente">Pendente</option>
+            <option value="aprovado">Aprovado</option>
+            <option value="entregue">Entregue</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <select class="input" id="o-cat">
+            <option value="todos">Todas categorias</option>
+            ${DB.CATEGORIES.map((c) => `<option value="${c}">${UI.CATEGORY_META[c].label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table class="table">
+            <thead><tr>
+              <th>Pedido</th><th>Usuário</th><th>Produto</th><th>Categoria</th><th>Status</th><th>Valor</th><th>Data</th><th>Ações</th>
+            </tr></thead>
+            <tbody>
+              ${list.length === 0 ? `<tr><td colspan="8" style="padding:32px;text-align:center;color:var(--text-2)">Nenhum pedido.</td></tr>` : list.map((p) => {
+                const u = users.find((u) => u.id === p.user_id);
+                return `<tr data-id="${UI.escapeHtml(p.id)}">
+                  <td><span class="mono">#${(p.id || '').slice(0, 8)}</span></td>
+                  <td>${u ? `@${UI.escapeHtml(u.username)}` : '<span class="muted">—</span>'}</td>
+                  <td><strong>${UI.escapeHtml(p.product_name)}</strong></td>
+                  <td>${UI.categoryBadge(p.product_category)}</td>
+                  <td>${UI.statusBadge(p.status)}</td>
+                  <td>${UI.formatBRL(p.price)}</td>
+                  <td><span class="muted">${UI.formatDate(p.created_at)}</span></td>
+                  <td>
+                    <select class="input input-sm" data-status>
+                      ${DB.STATUSES.map((s) => `<option value="${s}" ${s===p.status?'selected':''}>${UI.STATUS_META[s].label}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-sm btn-danger" data-del>${Icons.svg('trash')}</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    function render() { root.innerHTML = html(); Icons.hydrate(root); attach(); }
+    function attach() {
+      root.querySelector('#o-q').addEventListener('input', UI.debounce((e) => { q = e.target.value.trim().toLowerCase(); render(); }, 200));
+      root.querySelector('#o-status').addEventListener('change', (e) => { st = e.target.value; render(); });
+      root.querySelector('#o-cat').addEventListener('change', (e) => { cat = e.target.value; render(); });
+      root.querySelectorAll('[data-status]').forEach((sel) => {
+        sel.addEventListener('change', async () => {
+          const tr = sel.closest('tr'); const id = tr?.dataset.id;
+          const newStatus = sel.value;
+          try {
+            await DB.purchases.setStatus(id, newStatus);
+            const purchase = purchases.find((x) => x.id === id);
+            await Activity.record({ userId: me.id, type: 'admin_action', message: `Pedido #${id.slice(0,8)} alterado para "${UI.STATUS_META[newStatus].label}".` });
+            if (purchase?.user_id) await Notifications.push({ userId: purchase.user_id, type: newStatus === 'cancelado' ? 'error' : 'success', title: 'Status atualizado', message: `Seu pedido para ${purchase.product_name} agora está: ${UI.STATUS_META[newStatus].label}.` });
+            UI.toast.success('Status atualizado.');
+            purchases = await DB.purchases.all(); render();
+          } catch (err) { UI.toast.error(err?.message || 'Falha ao atualizar.'); }
+        });
+      });
+      root.querySelectorAll('[data-del]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const tr = btn.closest('tr'); const id = tr?.dataset.id;
+          const ok = await UI.confirm({ title: 'Excluir pedido', message: 'Tem certeza? Esta ação é permanente.', danger: true });
+          if (!ok) return;
+          try {
+            await DB.purchases.remove(id);
+            UI.toast.success('Pedido removido.');
+            purchases = await DB.purchases.all(); render();
+          } catch (err) { UI.toast.error(err?.message || 'Falha ao excluir.'); }
+        });
+      });
+    }
+    render();
+  }
+
+  /* --------------- PRODUCTS --------------- */
+  async function renderProducts(root) {
+    products = await DB.products.all();
+    let q = '', cat = 'todos';
+    function html() {
+      const list = products.filter((p) => {
+        if (cat !== 'todos' && p.category !== cat) return false;
+        if (q && !((p.name || '') + (p.description || '') + (p.short_description || '')).toLowerCase().includes(q)) return false;
+        return true;
+      });
+      return `
+        <div class="toolbar mb-4" style="justify-content:space-between;">
+          <div style="display:flex;gap:10px;flex:1;">
+            <div class="search-field" style="flex:1;">${Icons.svg('search')}<input class="input" id="p-q" placeholder="Buscar produto..." value="${UI.escapeHtml(q)}"/></div>
+            <select class="input" id="p-cat">
+              <option value="todos">Todas</option>
+              ${DB.CATEGORIES.map((c) => `<option value="${c}">${UI.CATEGORY_META[c].label}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-primary" id="p-new">${Icons.svg('plus')} Novo produto</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table class="table">
+            <thead><tr><th>Nome</th><th>Categoria</th><th>Preço</th><th>Status</th><th>Recomendado</th><th>Ações</th></tr></thead>
+            <tbody>
+              ${list.length === 0 ? `<tr><td colspan="6" style="padding:32px;text-align:center;color:var(--text-2)">Nenhum produto.</td></tr>` : list.map((p) => `
+                <tr data-id="${UI.escapeHtml(p.id)}">
+                  <td><div style="display:flex;align-items:center;gap:10px;"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--bg-elev-2);color:var(--brand-300)">${Icons.svg(p.icon || 'bot')}</span><div><div style="font-weight:600;">${UI.escapeHtml(p.name)}</div><div class="muted" style="font-size:12px;">${UI.escapeHtml(p.short_description || '')}</div></div></div></td>
+                  <td>${UI.categoryBadge(p.category)}</td>
+                  <td>${UI.formatBRL(p.price)}</td>
+                  <td>${p.active === false ? '<span class="badge badge-muted">Oculto</span>' : '<span class="badge badge-success">Ativo</span>'}</td>
+                  <td>${p.recommended ? '<span class="badge badge-info">Sim</span>' : '<span class="muted">—</span>'}</td>
+                  <td>
+                    <button class="btn btn-sm btn-ghost" data-edit>${Icons.svg('edit')}</button>
+                    <button class="btn btn-sm btn-danger" data-del>${Icons.svg('trash')}</button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    function render() { root.innerHTML = html(); Icons.hydrate(root); attach(); }
+    function attach() {
+      root.querySelector('#p-q').addEventListener('input', UI.debounce((e) => { q = e.target.value.trim().toLowerCase(); render(); }, 200));
+      root.querySelector('#p-cat').addEventListener('change', (e) => { cat = e.target.value; render(); });
+      root.querySelector('#p-new').addEventListener('click', () => openProductForm(null));
+      root.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => {
+        const id = btn.closest('tr').dataset.id;
+        const p = products.find((x) => x.id === id);
+        if (p) openProductForm(p);
+      }));
+      root.querySelectorAll('[data-del]').forEach((btn) => btn.addEventListener('click', async () => {
+        const id = btn.closest('tr').dataset.id;
+        const ok = await UI.confirm({ title: 'Excluir produto', message: 'Esta ação não pode ser desfeita.', danger: true });
+        if (!ok) return;
+        try {
+          await DB.products.remove(id);
+          UI.toast.success('Produto removido.');
+          products = await DB.products.all(); render();
+        } catch (err) { UI.toast.error(err?.message || 'Falha ao excluir.'); }
+      }));
+    }
+    function openProductForm(p) {
+      const isEdit = !!p;
+      const data = p || {};
+      const m = UI.openModal({
+        title: isEdit ? 'Editar produto' : 'Novo produto',
+        size: 'lg',
+        body: `
+          <form id="prod-form" class="form-grid">
+            <div class="form-row">
+              <div class="field"><label class="field-label">Nome</label><input class="input" name="name" required value="${UI.escapeHtml(data.name || '')}"/></div>
+              <div class="field"><label class="field-label">Categoria</label><select class="input" name="category" required>${DB.CATEGORIES.map((c) => `<option value="${c}" ${c===data.category?'selected':''}>${UI.CATEGORY_META[c].label}</option>`).join('')}</select></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label class="field-label">Preço (R$)</label><input class="input" name="price" type="number" step="0.01" min="0" required value="${data.price ?? ''}"/></div>
+              <div class="field"><label class="field-label">Período</label><input class="input" name="period" placeholder="ex: mês, ano, único" value="${UI.escapeHtml(data.period || '')}"/></div>
+              <div class="field"><label class="field-label">Ícone (key)</label><input class="input" name="icon" placeholder="bot, shield2, music..." value="${UI.escapeHtml(data.icon || 'bot')}"/></div>
+            </div>
+            <div class="field"><label class="field-label">Descrição curta</label><input class="input" name="short_description" value="${UI.escapeHtml(data.short_description || '')}"/></div>
+            <div class="field"><label class="field-label">Descrição completa</label><textarea class="input" name="description" rows="3">${UI.escapeHtml(data.description || '')}</textarea></div>
+            <div class="field"><label class="field-label">Recursos (um por linha)</label><textarea class="input" name="features" rows="3">${(data.features || []).join('\n')}</textarea></div>
+            <div class="form-row">
+              <div class="field"><label class="field-label">Badge</label><input class="input" name="badge" placeholder="ex: Top 1, Lançamento" value="${UI.escapeHtml(data.badge || '')}"/></div>
+              <div class="field"><label class="field-label">Imagem (URL)</label><input class="input" name="image" value="${UI.escapeHtml(data.image || '')}"/></div>
+            </div>
+            <div class="form-row">
+              <label class="checkbox"><input type="checkbox" name="active" ${data.active !== false ? 'checked' : ''}/><span class="box"></span><span>Ativo</span></label>
+              <label class="checkbox"><input type="checkbox" name="recommended" ${data.recommended ? 'checked' : ''}/><span class="box"></span><span>Recomendado</span></label>
+            </div>
+          </form>
+        `,
+        footer: `<button class="btn btn-ghost" data-close>Cancelar</button><button class="btn btn-primary" id="prod-save">${Icons.svg('check')} Salvar</button>`,
+      });
+      Icons.hydrate(m.root);
+      m.root.querySelector('#prod-save').addEventListener('click', async () => {
+        const f = m.root.querySelector('#prod-form');
+        const fd = new FormData(f);
+        const features = String(fd.get('features') || '').split(/\n+/).map((s) => s.trim()).filter(Boolean);
+        const payload = {
+          name: fd.get('name'),
+          category: fd.get('category'),
+          price: Number(fd.get('price') || 0),
+          period: fd.get('period') || null,
+          icon: fd.get('icon') || 'bot',
+          short_description: fd.get('short_description') || null,
+          description: fd.get('description') || null,
+          features,
+          badge: fd.get('badge') || null,
+          image: fd.get('image') || null,
+          active: !!fd.get('active'),
+          recommended: !!fd.get('recommended'),
+        };
+        try {
+          if (isEdit) await DB.products.update(p.id, payload);
+          else await DB.products.create(payload);
+          UI.toast.success('Produto salvo.');
+          m.close();
+          products = await DB.products.all();
+          renderProducts(root);
+        } catch (err) { UI.toast.error(err?.message || 'Falha ao salvar.'); }
+      });
+    }
+    render();
+  }
+
+  /* --------------- LOGS --------------- */
+  async function renderLogs(root) {
+    [logs, users] = await Promise.all([DB.activity.all(200), DB.profiles.all()]);
+    let q = '';
+    function html() {
+      const list = logs.filter((l) => {
+        if (!q) return true;
+        const u = users.find((u) => u.id === l.user_id);
+        return ((l.message || '') + ' ' + (l.type || '') + ' ' + (u?.username || '')).toLowerCase().includes(q);
+      });
+      return `
+        <div class="toolbar mb-4" style="justify-content:space-between;">
+          <div class="search-field" style="flex:1;">${Icons.svg('search')}<input class="input" id="l-q" placeholder="Buscar logs..." value="${UI.escapeHtml(q)}"/></div>
+          <button class="btn btn-danger" id="l-clear">${Icons.svg('trash')} Limpar logs</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table class="table">
+            <thead><tr><th>Tipo</th><th>Usuário</th><th>Mensagem</th><th>Quando</th></tr></thead>
+            <tbody>
+              ${list.length === 0 ? `<tr><td colspan="4" style="padding:32px;text-align:center;color:var(--text-2)">Sem logs.</td></tr>` : list.map((l) => {
+                const u = users.find((u) => u.id === l.user_id);
+                return `<tr>
+                  <td><span class="badge badge-muted">${UI.escapeHtml(l.type || '—')}</span></td>
+                  <td>${u ? '@' + UI.escapeHtml(u.username) : '<span class="muted">sistema</span>'}</td>
+                  <td>${UI.escapeHtml(l.message || '')}</td>
+                  <td><span class="muted">${UI.formatDate(l.created_at)}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    function render() { root.innerHTML = html(); Icons.hydrate(root); attach(); }
+    function attach() {
+      root.querySelector('#l-q').addEventListener('input', UI.debounce((e) => { q = e.target.value.trim().toLowerCase(); render(); }, 200));
+      root.querySelector('#l-clear').addEventListener('click', async () => {
+        const ok = await UI.confirm({ title: 'Limpar logs', message: 'Apagar TODOS os logs de atividade?', danger: true });
+        if (!ok) return;
+        try {
+          await DB.activity.clear();
+          UI.toast.success('Logs apagados.');
+          logs = await DB.activity.all(); render();
+        } catch (err) { UI.toast.error(err?.message || 'Falha ao limpar.'); }
+      });
+    }
+    render();
+  }
+
+  global.Admin = Admin;
 })(window);

@@ -1,247 +1,144 @@
 /* ============================================================
-   NexaBots — Purchases page
+   NexaBots V2 — Minhas compras
    ============================================================ */
 (function (global) {
   'use strict';
 
-  const STATUS = {
-    pendente:  { label: 'Pendente',  cls: 'badge-pending'   },
-    aprovado:  { label: 'Aprovado',  cls: 'badge-approved'  },
-    entregue:  { label: 'Entregue',  cls: 'badge-delivered' },
-    cancelado: { label: 'Cancelado', cls: 'badge-canceled'  },
-  };
+  let user = null;
+  let purchases = [];
+  let filterStatus = 'todos';
+  let filterCategory = 'todos';
+  let search = '';
 
-  function statusBadge(status) {
-    const s = STATUS[status] || STATUS.pendente;
-    return `<span class="badge ${s.cls}">${s.label}</span>`;
-  }
+  const Purchases = {
+    async init(ctx) {
+      if (!ctx) return;
+      user = ctx.user;
+      const { content } = ctx;
 
-  function init() {
-    const user = Auth.currentUser();
-    if (!user) return;
-    const main = document.querySelector('.content');
-    if (!main) return;
-
-    main.innerHTML = `
-      <div class="page-header">
-        <div>
-          <h1>Minhas compras</h1>
-          <p class="subtitle">Acompanhe o status de todos os seus pedidos.</p>
-        </div>
-        <a href="plans.html" class="btn btn-primary">${Icons.svg('plus')} Novo pedido</a>
-      </div>
-
-      <div class="grid grid-stats" data-summary></div>
-
-      <div class="card mt-6">
-        <div class="toolbar">
-          <div class="filters" data-filters>
-            <button class="pill active" data-status="all">Todos</button>
-            <button class="pill" data-status="pendente">${Icons.svg('clock')} Pendentes</button>
-            <button class="pill" data-status="aprovado">Aprovados</button>
-            <button class="pill" data-status="entregue">Entregues</button>
-            <button class="pill" data-status="cancelado">Cancelados</button>
+      content.innerHTML = `
+        <div class="page-head">
+          <div>
+            <h1 class="page-title">Minhas compras</h1>
+            <p class="page-sub">Acompanhe o status dos seus pedidos. Pagamento manual via tickets no Discord.</p>
           </div>
+          <div class="page-actions">
+            <a class="btn btn-primary" href="store.html">${Icons.svg('store')} Marketplace</a>
+            <a class="btn btn-ghost" href="discord.html">${Icons.svg('discord')} Abrir ticket</a>
+          </div>
+        </div>
+
+        <div class="toolbar mb-4">
           <div class="search-field">
             ${Icons.svg('search')}
-            <input class="input" type="search" placeholder="Buscar por plano..." data-purchase-search />
+            <input class="input" id="p-search" type="search" placeholder="Buscar produto..." />
+          </div>
+          <div class="filters">
+            <select class="input" id="p-status">
+              <option value="todos">Todos os status</option>
+              <option value="pendente">Pendente</option>
+              <option value="aprovado">Aprovado</option>
+              <option value="entregue">Entregue</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            <select class="input" id="p-cat">
+              <option value="todos">Todas as categorias</option>
+              ${DB.CATEGORIES.map((c) => `<option value="${c}">${UI.CATEGORY_META[c].label}</option>`).join('')}
+            </select>
           </div>
         </div>
-        <div data-orders></div>
+
+        <div id="purchase-list">${UI.skeleton(4, 'row')}</div>
+      `;
+      Icons.hydrate(content);
+
+      content.querySelector('#p-search').addEventListener('input', UI.debounce((e) => { search = e.target.value.trim().toLowerCase(); render(content); }, 200));
+      content.querySelector('#p-status').addEventListener('change', (e) => { filterStatus = e.target.value; render(content); });
+      content.querySelector('#p-cat').addEventListener('change', (e) => { filterCategory = e.target.value; render(content); });
+
+      try {
+        purchases = await DB.purchases.byUser(user.id);
+      } catch (err) {
+        console.error('[Purchases] erro:', err);
+        purchases = [];
+      }
+      render(content);
+    },
+  };
+
+  function render(content) {
+    const list = purchases.filter((p) => {
+      if (filterStatus !== 'todos' && p.status !== filterStatus) return false;
+      if (filterCategory !== 'todos' && p.product_category !== filterCategory) return false;
+      if (search && !(p.product_name || '').toLowerCase().includes(search)) return false;
+      return true;
+    });
+    const root = content.querySelector('#purchase-list');
+    if (!list.length) {
+      root.innerHTML = `
+        <div class="card empty-state" style="padding:48px;">
+          ${Icons.svg('shoppingBag')}
+          <h3 style="font-size:18px;">Sem compras por aqui</h3>
+          <p>Quando você fizer um pedido, ele aparecerá aqui.</p>
+          <a href="store.html" class="btn btn-primary" style="margin-top:12px;">Ver marketplace</a>
+        </div>`;
+      Icons.hydrate(root);
+      return;
+    }
+    root.innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Produto</th>
+              <th>Categoria</th>
+              <th>Status</th>
+              <th>Valor</th>
+              <th>Data</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((p) => `
+              <tr data-search-target data-search-text="${UI.escapeHtml((p.product_name || '').toLowerCase())}" data-id="${UI.escapeHtml(p.id)}">
+                <td><span class="mono">#${(p.id || '').slice(0, 8)}</span></td>
+                <td><strong>${UI.escapeHtml(p.product_name)}</strong></td>
+                <td>${UI.categoryBadge(p.product_category)}</td>
+                <td>${UI.statusBadge(p.status)}</td>
+                <td>${UI.formatBRL(p.price)}</td>
+                <td><span class="muted">${UI.formatDate(p.created_at)}</span></td>
+                <td>
+                  <a class="btn btn-sm btn-ghost" href="discord.html">${Icons.svg('discord')} Ticket</a>
+                  ${p.status === 'pendente' ? `<button class="btn btn-sm btn-danger" data-cancel>${Icons.svg('close')} Cancelar</button>` : ''}
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
       </div>
     `;
+    Icons.hydrate(root);
 
-    let filterStatus = 'all';
-    let searchQ = '';
-
-    function getOrders() {
-      let list = DB.orders.filter((o) => o.userId === user.id)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      if (filterStatus !== 'all') list = list.filter((o) => o.status === filterStatus);
-      if (searchQ) {
-        const q = searchQ.toLowerCase();
-        list = list.filter((o) => (o.planName || '').toLowerCase().includes(q));
-      }
-      return list;
-    }
-
-    function renderSummary() {
-      const all = DB.orders.filter((o) => o.userId === user.id);
-      const counts = {
-        all: all.length,
-        pendente: all.filter((o) => o.status === 'pendente').length,
-        aprovado: all.filter((o) => o.status === 'aprovado').length,
-        entregue: all.filter((o) => o.status === 'entregue').length,
-      };
-      const totalSpent = all.filter((o) => o.status !== 'cancelado').reduce((s, o) => s + (o.price || 0), 0);
-      main.querySelector('[data-summary]').innerHTML = `
-        <div class="card card-stat">
-          <span class="stat-icon">${Icons.svg('purchases')}</span>
-          <span class="stat-label">Total de pedidos</span>
-          <span class="stat-value">${counts.all}</span>
-        </div>
-        <div class="card card-stat">
-          <span class="stat-icon" style="background:rgba(234,179,8,0.12);color:#fde68a;border-color:rgba(234,179,8,0.3)">${Icons.svg('clock')}</span>
-          <span class="stat-label">Pendentes</span>
-          <span class="stat-value">${counts.pendente}</span>
-        </div>
-        <div class="card card-stat">
-          <span class="stat-icon" style="background:rgba(34,197,94,0.12);color:#86efac;border-color:rgba(34,197,94,0.3)">${Icons.svg('checkCircle')}</span>
-          <span class="stat-label">Entregues</span>
-          <span class="stat-value">${counts.entregue}</span>
-        </div>
-        <div class="card card-stat">
-          <span class="stat-icon">${Icons.svg('dollar')}</span>
-          <span class="stat-label">Total investido</span>
-          <span class="stat-value" style="font-size:22px;">${UI.formatBRL(totalSpent)}</span>
-        </div>
-      `;
-      Icons.hydrate(main.querySelector('[data-summary]'));
-    }
-
-    function renderOrders() {
-      const list = getOrders();
-      const wrap = main.querySelector('[data-orders]');
-      if (list.length === 0) {
-        wrap.innerHTML = `
-          <div class="empty-state">
-            ${Icons.svg('shoppingBag')}
-            <h3>Nenhum pedido encontrado</h3>
-            <p>${filterStatus === 'all' ? 'Você ainda não fez pedidos. Que tal escolher um plano?' : 'Nenhum pedido com este filtro.'}</p>
-            ${filterStatus === 'all' ? `<a class="btn btn-primary mt-4" href="plans.html">${Icons.svg('plans')} Ver planos</a>` : ''}
-          </div>
-        `;
-        Icons.hydrate(wrap);
-        return;
-      }
-      wrap.innerHTML = `
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr><th>Pedido</th><th>Plano</th><th>Período</th><th>Data</th><th>Valor</th><th>Status</th><th></th></tr>
-            </thead>
-            <tbody>
-              ${list.map((o) => `
-                <tr>
-                  <td><span class="code">#${o.id.slice(-6).toUpperCase()}</span></td>
-                  <td><strong>${UI.escapeHtml(o.planName)}</strong></td>
-                  <td>${o.period === 'ano' ? 'Anual' : 'Mensal'}</td>
-                  <td>${UI.formatDate(o.createdAt, { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</td>
-                  <td><strong>${UI.formatBRL(o.price)}</strong></td>
-                  <td>${statusBadge(o.status)}</td>
-                  <td class="cell-actions">
-                    <button class="btn btn-sm btn-ghost" data-detail="${o.id}">Detalhes</button>
-                    ${o.status === 'pendente' ? `<button class="btn btn-sm btn-danger" data-cancel="${o.id}">Cancelar</button>` : ''}
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    function bind() {
-      main.querySelector('[data-purchase-search]').addEventListener('input', (e) => {
-        searchQ = e.target.value.trim();
-        renderOrders();
+    root.querySelectorAll('[data-cancel]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const tr = btn.closest('tr');
+        const id = tr?.dataset.id;
+        if (!id) return;
+        const ok = await UI.confirm({ title: 'Cancelar pedido', message: 'Deseja realmente cancelar este pedido?', confirmText: 'Sim, cancelar', danger: true });
+        if (!ok) return;
+        try {
+          await DB.purchases.setStatus(id, 'cancelado');
+          await Activity.record({ userId: user.id, type: 'status_change', message: `Pedido ${id.slice(0,8)} cancelado.`, data: { purchase_id: id } });
+          UI.toast.success('Pedido cancelado.');
+          purchases = await DB.purchases.byUser(user.id);
+          render(content);
+        } catch (err) {
+          console.error(err);
+          UI.toast.error('Não foi possível cancelar.');
+        }
       });
-      main.querySelectorAll('[data-filters] .pill').forEach((p) => {
-        p.addEventListener('click', () => {
-          main.querySelectorAll('[data-filters] .pill').forEach((x) => x.classList.remove('active'));
-          p.classList.add('active');
-          filterStatus = p.dataset.status;
-          renderOrders();
-        });
-      });
-      main.addEventListener('click', (e) => {
-        const detail = e.target.closest('[data-detail]');
-        const cancel = e.target.closest('[data-cancel]');
-        if (detail) openDetail(detail.dataset.detail);
-        else if (cancel) doCancel(cancel.dataset.cancel);
-      });
-    }
-
-    function openDetail(id) {
-      const o = DB.orders.get(id);
-      if (!o) return;
-      const plan = DB.plans.get(o.planId);
-      UI.openModal({
-        title: 'Detalhes do pedido #' + o.id.slice(-6).toUpperCase(),
-        body: `
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <div class="flex justify-between items-center">
-              <div>
-                <div style="font-weight:700;font-size:16px;">${UI.escapeHtml(o.planName)}</div>
-                <div class="muted" style="font-size:13px;">${plan ? UI.escapeHtml(plan.tagline) : ''}</div>
-              </div>
-              ${statusBadge(o.status)}
-            </div>
-            <hr class="divider" style="margin:0;" />
-            <div class="grid grid-2" style="gap:12px;font-size:13.5px;">
-              <div><span class="muted">Período:</span><br><strong>${o.period === 'ano' ? 'Anual' : 'Mensal'}</strong></div>
-              <div><span class="muted">Valor:</span><br><strong>${UI.formatBRL(o.price)}</strong></div>
-              <div><span class="muted">Criado em:</span><br><strong>${UI.formatDate(o.createdAt)}</strong></div>
-              <div><span class="muted">Atualizado em:</span><br><strong>${o.updatedAt ? UI.formatDate(o.updatedAt) : '—'}</strong></div>
-            </div>
-            ${o.status === 'pendente' ? `
-              <div class="alert warning">
-                ${Icons.svg('warn')}
-                <div>
-                  <div class="alert-title">Aguardando pagamento</div>
-                  <div class="alert-body">Abra um ticket no nosso Discord para finalizar o pagamento.</div>
-                </div>
-              </div>
-              <a href="discord.html" class="btn btn-primary">${Icons.svg('discord')} Abrir ticket no Discord</a>
-            ` : o.status === 'aprovado' ? `
-              <div class="alert info">
-                ${Icons.svg('info')}
-                <div>
-                  <div class="alert-title">Pagamento aprovado</div>
-                  <div class="alert-body">Sua entrega está sendo preparada. Em breve seu bot estará no ar!</div>
-                </div>
-              </div>
-            ` : o.status === 'entregue' ? `
-              <div class="alert success">
-                ${Icons.svg('checkCircle')}
-                <div>
-                  <div class="alert-title">Pedido entregue</div>
-                  <div class="alert-body">Tudo pronto! Seu bot está ativo. Qualquer dúvida, abra um ticket no Discord.</div>
-                </div>
-              </div>
-            ` : `
-              <div class="alert danger">
-                ${Icons.svg('error')}
-                <div>
-                  <div class="alert-title">Pedido cancelado</div>
-                  <div class="alert-body">Você ou um administrador cancelou este pedido.</div>
-                </div>
-              </div>
-            `}
-          </div>
-        `,
-        footer: `<button class="btn btn-ghost" data-close>Fechar</button>`,
-      });
-    }
-
-    function doCancel(id) {
-      UI.confirm({ title: 'Cancelar pedido', message: 'Tem certeza que deseja cancelar este pedido pendente?', confirmText: 'Cancelar pedido', danger: true })
-        .then((ok) => {
-          if (!ok) return;
-          DB.orders.update(id, { status: 'cancelado' });
-          Activity.log({ userId: user.id, type: 'order', message: 'Pedido cancelado pelo usuário.', data: { orderId: id } });
-          Notifications.push({ userId: user.id, title: 'Pedido cancelado', message: 'Seu pedido foi cancelado.', type: 'warning' });
-          UI.toast.warn('Pedido cancelado.');
-          renderSummary();
-          renderOrders();
-        });
-    }
-
-    renderSummary();
-    renderOrders();
-    bind();
-    Icons.hydrate(main);
+    });
   }
 
-  global.Purchases = { init, statusBadge, STATUS };
+  global.Purchases = Purchases;
 })(window);

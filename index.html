@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="NexaBots — Plataforma premium de bots para Discord. Entre na sua conta e gerencie seus bots." />
+  <meta name="description" content="NexaBots — Plataforma premium de bots, cursos e produtos digitais para Discord." />
   <meta name="theme-color" content="#7c3aed" />
   <title>Entrar — NexaBots</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="css/theme.css" />
   <link rel="stylesheet" href="css/components.css" />
@@ -20,26 +20,33 @@
       <div class="auth-brand">
         <span class="logo" data-icon="bot"></span>
         <span class="brand-name">NexaBots</span>
-        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">PRO</span>
+        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">V2</span>
       </div>
 
       <div class="auth-hero">
-        <h1>Bots que sua comunidade <span class="gradient-text">merece.</span></h1>
-        <p>Bem-vindo(a) ao NexaBots — a plataforma premium de bots para Discord. Música, moderação, economia, tickets e muito mais, em um único lugar.</p>
+        <h1>Mais que bots — uma <span class="gradient-text">plataforma completa.</span></h1>
+        <p>Bem-vindo(a) ao NexaBots V2 — bots Discord, cursos, jogos, Nitro e lojas prontas, em um único marketplace. Pagamento manual via tickets no Discord.</p>
 
         <div class="auth-features">
           <div class="auth-feature">
-            <span class="check" data-icon="bolt"></span>
+            <span class="check" data-icon="bot"></span>
             <div>
-              <div class="feat-title">Configuração em minutos</div>
-              <div class="feat-desc">Painel intuitivo, sem complicação técnica.</div>
+              <div class="feat-title">Bots premium</div>
+              <div class="feat-desc">Música, moderação, tickets, levels, economia.</div>
             </div>
           </div>
           <div class="auth-feature">
-            <span class="check" data-icon="shield"></span>
+            <span class="check" data-icon="book"></span>
             <div>
-              <div class="feat-title">Moderação inteligente</div>
-              <div class="feat-desc">Anti-raid, anti-spam e captcha integrados.</div>
+              <div class="feat-title">Cursos exclusivos</div>
+              <div class="feat-desc">Aprenda a criar bots, comunidades e SaaS.</div>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <span class="check" data-icon="sparkle"></span>
+            <div>
+              <div class="feat-title">Discord Nitro & Jogos</div>
+              <div class="feat-desc">Itens digitais com entrega manual rápida.</div>
             </div>
           </div>
           <div class="auth-feature">
@@ -109,17 +116,20 @@
           Ainda não tem uma conta? <a href="register.html">Criar conta gratuita</a>
         </p>
 
-        <div class="alert info" style="margin-top:24px;">
+        <div class="alert info" style="margin-top:24px;" id="demo-hint">
           <span data-icon="info"></span>
           <div>
             <div class="alert-title">Conta de demonstração</div>
-            <div class="alert-body">Use <code class="code">admin</code> / <code class="code">admin123</code> para entrar como administrador.</div>
+            <div class="alert-body">Em modo demo, use <code class="code">admin</code> / <code class="code">admin123</code> para entrar como administrador.</div>
           </div>
         </div>
       </div>
     </section>
   </div>
 
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/db.js"></script>
   <script src="js/seed.js"></script>
@@ -128,20 +138,29 @@
   <script src="js/auth.js"></script>
   <script src="js/ui.js"></script>
   <script>
-    (function () {
+    (async function () {
       'use strict';
       // Apply persisted theme + redirect if already logged in.
-      UI.applyTheme((DB.meta.getSettings().theme) || 'dark');
-      if (Auth.isAuthenticated()) {
+      UI.applyTheme(UI.getPrefs().theme || 'dark');
+      const me = await Auth.currentUser();
+      if (me) {
         window.location.replace('dashboard.html');
         return;
+      }
+
+      // Atualiza o hint de demo se está em modo Live (Supabase)
+      if (window.Nexa?.isReady()) {
+        const hint = document.getElementById('demo-hint');
+        if (hint) {
+          hint.querySelector('.alert-title').textContent = 'Conta admin';
+          hint.querySelector('.alert-body').innerHTML = 'Cadastre-se com o e-mail <code class="code">admin@nexabots.app</code> para receber permissão de administrador automaticamente.';
+        }
       }
 
       const form = document.getElementById('login-form');
       const identifier = document.getElementById('identifier');
       const password = document.getElementById('password');
 
-      // Show/hide password
       document.querySelector('[data-toggle-pass]').addEventListener('click', () => {
         const isPwd = password.type === 'password';
         password.type = isPwd ? 'text' : 'password';
@@ -149,7 +168,6 @@
         Icons.hydrate(document.querySelector('[data-toggle-pass]'));
       });
 
-      // Forgot link (mock)
       document.getElementById('forgot-link').addEventListener('click', (e) => {
         e.preventDefault();
         UI.toast.info('Para recuperar senha, abra um ticket no nosso Discord.', 'Recuperar senha');
@@ -165,7 +183,7 @@
         form.querySelectorAll('.field').forEach((f) => f.classList.remove('invalid'));
       }
 
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearErrors();
         const idVal = identifier.value.trim();
@@ -179,19 +197,20 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span> Entrando...';
 
-        setTimeout(() => {
-          const res = Auth.login({ identifier: idVal, password: pwVal });
-          if (!res.ok) {
-            UI.toast.error(res.error || 'Não foi possível entrar.');
-            btn.disabled = false;
-            btn.innerHTML = '<span data-icon="arrowRight"></span> Entrar';
-            Icons.hydrate(btn);
-            return;
-          }
-          UI.toast.success('Bem-vindo(a) de volta, ' + (res.user.displayName || res.user.username) + '!');
-          Notifications.seedDefaults(res.user.id);
+        try {
+          const profile = await Auth.login({ identifier: idVal, password: pwVal });
+          UI.toast.success('Bem-vindo(a) de volta, ' + (profile.display_name || profile.username) + '!');
+          await Activity.record({
+            userId: profile.id, type: 'login',
+            message: 'Login realizado com sucesso.',
+          });
           setTimeout(() => window.location.assign('dashboard.html'), 350);
-        }, 450);
+        } catch (err) {
+          UI.toast.error(err?.message || 'Não foi possível entrar.');
+          btn.disabled = false;
+          btn.innerHTML = '<span data-icon="arrowRight"></span> Entrar';
+          Icons.hydrate(btn);
+        }
       });
     })();
   </script>

@@ -1,15 +1,34 @@
 /* ============================================================
-   NexaBots — UI utilities
+   NexaBots V2 — UI utilities
    - Toast system
    - Modal helpers
-   - Theme / sidebar toggles
+   - Theme / sidebar toggles (localStorage-backed prefs)
    - Avatar gradients
    - Format helpers (currency, date, time-ago)
    ============================================================ */
 (function (global) {
   'use strict';
 
-  // ---------- Toasts ----------
+  /* ---------- Preferences (localStorage) ---------- */
+  const PREFS_KEY = 'nexa.prefs';
+  const DEFAULT_PREFS = {
+    theme: 'dark',
+    sidebarCollapsed: false,
+    sound: true,
+    inAppNotifications: true,
+  };
+  function getPrefs() {
+    try {
+      return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') };
+    } catch { return { ...DEFAULT_PREFS }; }
+  }
+  function setPrefs(patch) {
+    const next = { ...getPrefs(), ...patch };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    return next;
+  }
+
+  /* ---------- Toasts ---------- */
   function ensureToastStack() {
     let stack = document.querySelector('.toast-stack');
     if (!stack) {
@@ -48,11 +67,11 @@
   toast.warn    = (m, t = 'Atenção') => toast({ title: t, message: m, type: 'warning' });
   toast.info    = (m, t = 'Aviso')   => toast({ title: t, message: m, type: 'info' });
 
-  // ---------- Modal ----------
+  /* ---------- Modal ---------- */
   function openModal({ title, body, footer, onClose, size }) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    const widthAttr = size === 'lg' ? 'style="max-width:720px"' : size === 'sm' ? 'style="max-width:400px"' : '';
+    const widthAttr = size === 'lg' ? 'style="max-width:780px"' : size === 'sm' ? 'style="max-width:420px"' : '';
     overlay.innerHTML = `
       <div class="modal" ${widthAttr}>
         <div class="modal-header">
@@ -108,12 +127,10 @@
     });
   }
 
-  // ---------- Theme / Sidebar ----------
+  /* ---------- Theme / Sidebar ---------- */
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
-    const s = DB.meta.getSettings();
-    s.theme = theme;
-    DB.meta.setSettings(s);
+    setPrefs({ theme });
   }
   function toggleTheme() {
     const cur = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -121,9 +138,7 @@
   }
   function applySidebar(collapsed) {
     document.querySelector('.app-shell')?.classList.toggle('collapsed', !!collapsed);
-    const s = DB.meta.getSettings();
-    s.sidebarCollapsed = !!collapsed;
-    DB.meta.setSettings(s);
+    setPrefs({ sidebarCollapsed: !!collapsed });
   }
   function toggleSidebar() {
     const shell = document.querySelector('.app-shell');
@@ -150,7 +165,7 @@
     return o;
   }
 
-  // ---------- Avatars ----------
+  /* ---------- Avatars ---------- */
   const GRADIENTS = {
     'gradient-1': 'linear-gradient(135deg,#7c3aed,#22d3ee)',
     'gradient-2': 'linear-gradient(135deg,#f472b6,#7c3aed)',
@@ -163,7 +178,7 @@
     return `background: ${GRADIENTS[avatarKey] || GRADIENTS['gradient-1']}`;
   }
   function avatarInitials(user) {
-    const name = (user && (user.displayName || user.username)) || '?';
+    const name = (user && (user.display_name || user.displayName || user.username)) || '?';
     return name.replace(/[^a-zA-ZÀ-ÿ ]/g, '').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase() || name[0].toUpperCase();
   }
   function renderAvatar(user, size = '') {
@@ -171,7 +186,7 @@
     return `<span class="avatar ${size}" style="${avatarStyle(user.avatar)}">${avatarInitials(user)}</span>`;
   }
 
-  // ---------- Formatters ----------
+  /* ---------- Formatters ---------- */
   function formatBRL(v) {
     if (typeof v !== 'number') v = Number(v) || 0;
     return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -196,7 +211,30 @@
     return `há ${Math.floor(mo / 12)} anos`;
   }
 
-  // ---------- Helpers ----------
+  /* ---------- Categories metadata ---------- */
+  const CATEGORY_META = {
+    bots:   { label: 'Bots Discord', icon: 'bot',      color: '#7c3aed', emoji: '🤖' },
+    cursos: { label: 'Cursos',       icon: 'book',     color: '#22d3ee', emoji: '🎓' },
+    jogos:  { label: 'Jogos',        icon: 'gamepad',  color: '#22c55e', emoji: '🎮' },
+    nitro:  { label: 'Discord Nitro',icon: 'sparkle',  color: '#fbbf24', emoji: '💎' },
+    lojas:  { label: 'Lojas Prontas',icon: 'store',    color: '#f472b6', emoji: '🛍️' },
+  };
+  const STATUS_META = {
+    pendente:  { label: 'Pendente',  className: 'badge-warning' },
+    aprovado:  { label: 'Aprovado',  className: 'badge-info' },
+    entregue:  { label: 'Entregue',  className: 'badge-success' },
+    cancelado: { label: 'Cancelado', className: 'badge-danger' },
+  };
+  function statusBadge(status) {
+    const meta = STATUS_META[status] || { label: status, className: 'badge-muted' };
+    return `<span class="badge ${meta.className}">${escapeHtml(meta.label)}</span>`;
+  }
+  function categoryBadge(cat) {
+    const meta = CATEGORY_META[cat] || { label: cat, icon: 'tag' };
+    return `<span class="badge badge-soft"><span class="cat-emoji">${meta.emoji || ''}</span> ${escapeHtml(meta.label)}</span>`;
+  }
+
+  /* ---------- Helpers ---------- */
   function escapeHtml(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;')
@@ -217,6 +255,26 @@
       .then(() => toast.success('Copiado para a área de transferência.'))
       .catch(() => toast.error('Não foi possível copiar.'));
   }
+  function skeleton(count = 1, className = '') {
+    return Array.from({ length: count }).map(() => `<div class="skeleton ${className}"></div>`).join('');
+  }
+  function debounce(fn, ms = 300) {
+    let t;
+    return function (...args) {
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), ms);
+    };
+  }
+  function qs(name, search = location.search) {
+    return new URLSearchParams(search).get(name);
+  }
+
+  /* ---------- Apply prefs on load ---------- */
+  function applyStoredPrefs() {
+    const p = getPrefs();
+    document.documentElement.setAttribute('data-theme', p.theme || 'dark');
+  }
+  applyStoredPrefs();
 
   global.UI = {
     toast,
@@ -235,6 +293,15 @@
     escapeHtml,
     showRouteLoader,
     copy,
+    skeleton,
+    debounce,
+    qs,
     GRADIENTS,
+    CATEGORY_META,
+    STATUS_META,
+    statusBadge,
+    categoryBadge,
+    getPrefs,
+    setPrefs,
   };
 })(window);
