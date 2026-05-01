@@ -1,126 +1,285 @@
 /* ============================================================
-   NexaBots — DB (LocalStorage abstraction, simulating LocalBase)
-   Provides a Mongo/Firebase-style API on top of localStorage.
+   NexaBots V2 — Data layer (Supabase first, LocalStorage fallback)
+
+   Exporta `window.DB` com a mesma forma usada pelas páginas, mas
+   agora todos os métodos são assíncronos (retornam Promises).
+
+   Categorias / status:
+     CATEGORIES  = ['bots','cursos','jogos','nitro','lojas']
+     STATUSES    = ['pendente','aprovado','entregue','cancelado']
    ============================================================ */
-(function (global) {
+
+(function () {
   'use strict';
 
-  const PREFIX = 'nexabots_';
-  const VERSION_KEY = PREFIX + 'version';
-  const CURRENT_VERSION = '1.0.0';
+  const CATEGORIES = ['bots', 'cursos', 'jogos', 'nitro', 'lojas'];
+  const STATUSES = ['pendente', 'aprovado', 'entregue', 'cancelado'];
 
-  function read(key) {
-    try {
-      const raw = localStorage.getItem(PREFIX + key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      console.error('[DB] read error', key, e);
-      return null;
-    }
-  }
-  function write(key, value) {
-    try {
-      localStorage.setItem(PREFIX + key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      console.error('[DB] write error', key, e);
-      return false;
-    }
-  }
-  function remove(key) {
-    localStorage.removeItem(PREFIX + key);
-  }
+  const LS = {
+    profiles: 'nexa.demo.profiles',
+    products: 'nexa.demo.products',
+    purchases: 'nexa.demo.purchases',
+    activity: 'nexa.demo.activity',
+    notifications: 'nexa.demo.notifications',
+    session: 'nexa.demo.session',
+  };
 
-  function uid(prefix = 'id') {
-    return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
-  }
+  const isReady = () => window.Nexa && window.Nexa.isReady();
+  const supa = () => window.Nexa.db;
 
+  /* ---------------- Local storage helpers (modo demo) ---------------- */
+  function lsGet(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+  }
+  function lsSet(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+  function uuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
   function nowISO() { return new Date().toISOString(); }
 
-  // ---------- Collection helpers ----------
-  function collection(name) {
-    if (!read(name)) write(name, []);
-    return {
-      all() { return read(name) || []; },
-      find(predicate) { return (read(name) || []).find(predicate); },
-      filter(predicate) { return (read(name) || []).filter(predicate); },
-      get(id) { return (read(name) || []).find((x) => x.id === id); },
-      insert(doc) {
-        const list = read(name) || [];
-        const item = Object.assign({ id: uid(name), createdAt: nowISO() }, doc);
-        list.push(item);
-        write(name, list);
-        return item;
-      },
-      update(id, patch) {
-        const list = read(name) || [];
-        const idx = list.findIndex((x) => x.id === id);
-        if (idx === -1) return null;
-        list[idx] = Object.assign({}, list[idx], patch, { updatedAt: nowISO() });
-        write(name, list);
-        return list[idx];
-      },
-      remove(id) {
-        const list = read(name) || [];
-        const next = list.filter((x) => x.id !== id);
-        write(name, next);
-        return list.length !== next.length;
-      },
-      replaceAll(items) { write(name, items); },
-      count() { return (read(name) || []).length; },
-      clear() { write(name, []); },
-    };
+  /* ---------------- PROFILES ---------------- */
+  const profiles = {
+    async all() {
+      if (isReady()) {
+        return await supa().profiles.list({}, { orderBy: 'created_at', orderAsc: false });
+      }
+      return lsGet(LS.profiles);
+    },
+    async get(id) {
+      if (isReady()) return await supa().profiles.get(id);
+      return lsGet(LS.profiles).find((p) => p.id === id) || null;
+    },
+    async byUsername(username) {
+      if (isReady()) {
+        const list = await supa().profiles.list({}, { });
+        return list.find((p) => p.username?.toLowerCase() === username.toLowerCase()) || null;
+      }
+      return lsGet(LS.profiles).find(
+        (p) => p.username?.toLowerCase() === username.toLowerCase()
+      ) || null;
+    },
+    async update(id, patch) {
+      if (isReady()) return await supa().profiles.update(id, patch);
+      const list = lsGet(LS.profiles);
+      const i = list.findIndex((p) => p.id === id);
+      if (i < 0) throw new Error('Perfil não encontrado.');
+      list[i] = { ...list[i], ...patch, updated_at: nowISO() };
+      lsSet(LS.profiles, list);
+      return list[i];
+    },
+    async remove(id) {
+      if (isReady()) return await supa().profiles.remove(id);
+      const list = lsGet(LS.profiles).filter((p) => p.id !== id);
+      lsSet(LS.profiles, list);
+    },
+  };
+
+  /* ---------------- PRODUCTS ---------------- */
+  const products = {
+    async all() {
+      if (isReady()) {
+        return await supa().products.list({}, { orderBy: 'category', orderAsc: true });
+      }
+      return lsGet(LS.products);
+    },
+    async byCategory(category) {
+      if (isReady()) return await supa().products.list({ category }, { orderBy: 'price', orderAsc: true });
+      return lsGet(LS.products).filter((p) => p.category === category);
+    },
+    async get(id) {
+      if (isReady()) return await supa().products.get(id);
+      return lsGet(LS.products).find((p) => p.id === id) || null;
+    },
+    async create(payload) {
+      const data = {
+        ...payload,
+        active: payload.active ?? true,
+        recommended: !!payload.recommended,
+        features: payload.features || [],
+        metadata: payload.metadata || {},
+      };
+      if (isReady()) return await supa().products.create(data);
+      const list = lsGet(LS.products);
+      const created = { id: uuid(), created_at: nowISO(), updated_at: nowISO(), ...data };
+      list.unshift(created);
+      lsSet(LS.products, list);
+      return created;
+    },
+    async update(id, patch) {
+      if (isReady()) return await supa().products.update(id, patch);
+      const list = lsGet(LS.products);
+      const i = list.findIndex((p) => p.id === id);
+      if (i < 0) throw new Error('Produto não encontrado.');
+      list[i] = { ...list[i], ...patch, updated_at: nowISO() };
+      lsSet(LS.products, list);
+      return list[i];
+    },
+    async remove(id) {
+      if (isReady()) return await supa().products.remove(id);
+      lsSet(LS.products, lsGet(LS.products).filter((p) => p.id !== id));
+    },
+  };
+
+  /* ---------------- PURCHASES ---------------- */
+  const purchases = {
+    async all() {
+      if (isReady()) return await supa().purchases.list({});
+      return lsGet(LS.purchases);
+    },
+    async byUser(userId) {
+      if (isReady()) return await supa().purchases.list({ user_id: userId });
+      return lsGet(LS.purchases).filter((p) => p.user_id === userId);
+    },
+    async get(id) {
+      if (isReady()) return await supa().purchases.get(id);
+      return lsGet(LS.purchases).find((p) => p.id === id) || null;
+    },
+    async create({ userId, product, period, notes }) {
+      const payload = {
+        user_id: userId,
+        product_id: product.id || null,
+        product_name: product.name,
+        product_category: product.category || null,
+        price: product.price,
+        period: period || 'mês',
+        status: 'pendente',
+        notes: notes || null,
+      };
+      if (isReady()) return await supa().purchases.create(payload);
+      const list = lsGet(LS.purchases);
+      const created = { id: uuid(), created_at: nowISO(), updated_at: nowISO(), ...payload };
+      list.unshift(created);
+      lsSet(LS.purchases, list);
+      return created;
+    },
+    async update(id, patch) {
+      if (isReady()) return await supa().purchases.update(id, patch);
+      const list = lsGet(LS.purchases);
+      const i = list.findIndex((p) => p.id === id);
+      if (i < 0) throw new Error('Pedido não encontrado.');
+      list[i] = { ...list[i], ...patch, updated_at: nowISO() };
+      lsSet(LS.purchases, list);
+      return list[i];
+    },
+    async setStatus(id, status) {
+      if (!STATUSES.includes(status)) throw new Error('Status inválido.');
+      return await this.update(id, { status });
+    },
+    async remove(id) {
+      if (isReady()) return await supa().purchases.remove(id);
+      lsSet(LS.purchases, lsGet(LS.purchases).filter((p) => p.id !== id));
+    },
+  };
+
+  /* ---------------- ACTIVITY LOGS ---------------- */
+  const activity = {
+    async all(limit = 200) {
+      if (isReady()) return await supa().activity.list({}, { limit });
+      return lsGet(LS.activity).slice(0, limit);
+    },
+    async byUser(userId, limit = 50) {
+      if (isReady()) return await supa().activity.list({ user_id: userId }, { limit });
+      return lsGet(LS.activity).filter((a) => a.user_id === userId).slice(0, limit);
+    },
+    async record({ userId, type, message, data }) {
+      const payload = {
+        user_id: userId || null,
+        type,
+        message,
+        data: data || {},
+      };
+      if (isReady()) {
+        try { return await supa().activity.create(payload); }
+        catch (err) { console.warn('[DB.activity] não conseguiu gravar:', err); return null; }
+      }
+      const list = lsGet(LS.activity);
+      const created = { id: uuid(), created_at: nowISO(), ...payload };
+      list.unshift(created);
+      lsSet(LS.activity, list.slice(0, 500));
+      return created;
+    },
+    async clear() {
+      if (isReady()) {
+        // só admin consegue (RLS bloqueia o resto)
+        const all = await supa().activity.list({});
+        await Promise.all(all.map((row) => supa().activity.remove(row.id)));
+        return;
+      }
+      lsSet(LS.activity, []);
+    },
+  };
+
+  /* ---------------- NOTIFICATIONS ---------------- */
+  const notifications = {
+    async byUser(userId) {
+      if (isReady()) return await supa().notifications.list({ user_id: userId });
+      return lsGet(LS.notifications).filter((n) => n.user_id === userId);
+    },
+    async unreadCount(userId) {
+      const list = await this.byUser(userId);
+      return list.filter((n) => !n.read).length;
+    },
+    async push({ userId, title, message, type = 'info' }) {
+      const payload = { user_id: userId, title, message, type, read: false };
+      if (isReady()) return await supa().notifications.create(payload);
+      const list = lsGet(LS.notifications);
+      const created = { id: uuid(), created_at: nowISO(), ...payload };
+      list.unshift(created);
+      lsSet(LS.notifications, list);
+      return created;
+    },
+    async markRead(id) {
+      if (isReady()) return await supa().notifications.update(id, { read: true });
+      const list = lsGet(LS.notifications);
+      const i = list.findIndex((n) => n.id === id);
+      if (i >= 0) { list[i].read = true; lsSet(LS.notifications, list); }
+    },
+    async markAllRead(userId) {
+      const list = await this.byUser(userId);
+      await Promise.all(list.filter((n) => !n.read).map((n) => this.markRead(n.id)));
+    },
+    async remove(id) {
+      if (isReady()) return await supa().notifications.remove(id);
+      lsSet(LS.notifications, lsGet(LS.notifications).filter((n) => n.id !== id));
+    },
+  };
+
+  /* ---------------- DEMO SEED ---------------- */
+  function seedDemo() {
+    if (isReady()) return; // só popula em modo demo
+    if (lsGet(LS.products).length > 0) return;
+    const seed = [
+      // mini seed para modo demo (sem Supabase). Versão completa: supabase/seed.sql
+      { id: uuid(), name: 'Nexa Music', category: 'bots', price: 29.90, icon: 'music', short_description: 'Bot de música premium.', features: ['Multi-plataforma','Filas','Filtros'], badge: 'Top 1', recommended: false, active: true, created_at: nowISO() },
+      { id: uuid(), name: 'Nexa Guardian', category: 'bots', price: 39.90, icon: 'shield2', short_description: 'Moderação anti-raid.', features: ['Anti-raid','AutoMod','Captcha'], badge: 'Mais vendido', recommended: true, active: true, created_at: nowISO() },
+      { id: uuid(), name: 'Nexa Tickets', category: 'bots', price: 19.90, icon: 'tag', short_description: 'Tickets profissionais.', features: ['Múltiplas categorias','Transcrições'], badge: null, recommended: false, active: true, created_at: nowISO() },
+      { id: uuid(), name: 'Curso Discord.js', category: 'cursos', price: 197, icon: 'book', short_description: 'Curso completo de bots.', features: ['40h de aulas','Deploy 24/7'], badge: 'Lançamento', recommended: false, active: true, created_at: nowISO() },
+      { id: uuid(), name: 'Discord Nitro Anual', category: 'nitro', price: 195, icon: 'crown', short_description: 'Nitro Full por 12 meses.', features: ['12 meses','Economia 35%'], badge: 'Melhor oferta', recommended: true, active: true, created_at: nowISO() },
+      { id: uuid(), name: 'Conta Roblox', category: 'jogos', price: 89, icon: 'gamepad', short_description: '1000+ Robux.', features: ['1000+ Robux','Badges raras'], badge: null, recommended: false, active: true, created_at: nowISO() },
+      { id: uuid(), name: 'Loja Premium', category: 'lojas', price: 297, icon: 'store', short_description: 'Servidor de loja pronto.', features: ['Bots integrados','Templates'], badge: 'Pacote', recommended: true, active: true, created_at: nowISO() },
+    ];
+    lsSet(LS.products, seed);
   }
 
-  // ---------- Top-level state (session, settings) ----------
-  const meta = {
-    getSession() { return read('session'); },
-    setSession(s) { return write('session', s); },
-    clearSession() { remove('session'); },
-    getSettings() {
-      return read('settings') || { theme: 'dark', sidebarCollapsed: false, notifications: true, sound: true };
-    },
-    setSettings(s) { return write('settings', s); },
+  /* ---------------- EXPORT ---------------- */
+  window.DB = {
+    CATEGORIES,
+    STATUSES,
+    profiles,
+    products,
+    purchases,
+    activity,
+    notifications,
+    seedDemo,
+    isLive: isReady,
   };
 
-  // ---------- Public ----------
-  global.DB = {
-    PREFIX,
-    uid,
-    nowISO,
-    users:        collection('users'),
-    plans:        collection('plans'),
-    orders:       collection('orders'),
-    bots:         collection('bots'),
-    activity:     collection('activity'),
-    notifications:collection('notifications'),
-    meta,
-    raw: { read, write, remove },
-    version() { return read('version') || CURRENT_VERSION; },
-    setVersion(v) { write('version', v); },
-    /** Reset everything (used by admin / seed). */
-    nuke() {
-      const keys = Object.keys(localStorage).filter((k) => k.startsWith(PREFIX));
-      keys.forEach((k) => localStorage.removeItem(k));
-    },
-    /** Export full database as JSON string. */
-    exportAll() {
-      const out = {};
-      Object.keys(localStorage).forEach((k) => {
-        if (k.startsWith(PREFIX)) out[k.slice(PREFIX.length)] = JSON.parse(localStorage.getItem(k));
-      });
-      return JSON.stringify(out, null, 2);
-    },
-    /** Import full database from JSON string. */
-    importAll(json) {
-      try {
-        const obj = JSON.parse(json);
-        Object.entries(obj).forEach(([k, v]) => write(k, v));
-        return true;
-      } catch (e) {
-        console.error('[DB] import failed', e);
-        return false;
-      }
-    },
-  };
-})(window);
+  // popula seed se modo demo
+  seedDemo();
+})();

@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Crie sua conta no NexaBots e tenha acesso aos melhores bots para Discord." />
+  <meta name="description" content="Crie sua conta no NexaBots — bots, cursos, jogos e Nitro em um só marketplace." />
   <meta name="theme-color" content="#7c3aed" />
   <title>Criar conta — NexaBots</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="css/theme.css" />
   <link rel="stylesheet" href="css/components.css" />
@@ -20,33 +20,33 @@
       <div class="auth-brand">
         <span class="logo" data-icon="bot"></span>
         <span class="brand-name">NexaBots</span>
-        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">PRO</span>
+        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">V2</span>
       </div>
 
       <div class="auth-hero">
-        <h1>Junte-se à <span class="gradient-text">revolução</span> dos bots de Discord.</h1>
-        <p>Crie sua conta gratuita e tenha acesso a uma plataforma completa de bots premium, com configuração em minutos e suporte humanizado 24/7.</p>
+        <h1>Junte-se à <span class="gradient-text">revolução</span> do mercado digital Discord.</h1>
+        <p>Crie sua conta gratuita e tenha acesso ao marketplace completo: bots premium, cursos exclusivos, Nitro, jogos digitais e lojas prontas. Tudo com pagamento manual via tickets.</p>
 
         <div class="auth-features">
           <div class="auth-feature">
             <span class="check" data-icon="check"></span>
             <div>
               <div class="feat-title">100% gratuito para começar</div>
-              <div class="feat-desc">Crie sua conta sem custo, escolha um plano quando quiser.</div>
+              <div class="feat-desc">Crie sua conta sem custo, compre quando quiser.</div>
             </div>
           </div>
           <div class="auth-feature">
-            <span class="check" data-icon="bolt"></span>
+            <span class="check" data-icon="layers"></span>
             <div>
-              <div class="feat-title">Setup automático</div>
-              <div class="feat-desc">Configure seu bot em poucos cliques.</div>
+              <div class="feat-title">5 categorias de produtos</div>
+              <div class="feat-desc">Bots, cursos, jogos, Nitro e lojas prontas.</div>
             </div>
           </div>
           <div class="auth-feature">
             <span class="check" data-icon="crown"></span>
             <div>
-              <div class="feat-title">Recursos premium</div>
-              <div class="feat-desc">Comandos slash, embeds, multi-server e muito mais.</div>
+              <div class="feat-title">Sincronização em tempo real</div>
+              <div class="feat-desc">Backend Supabase mantém tudo persistido e seguro.</div>
             </div>
           </div>
         </div>
@@ -130,6 +130,9 @@
     </section>
   </div>
 
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/db.js"></script>
   <script src="js/seed.js"></script>
@@ -138,13 +141,11 @@
   <script src="js/auth.js"></script>
   <script src="js/ui.js"></script>
   <script>
-    (function () {
+    (async function () {
       'use strict';
-      UI.applyTheme((DB.meta.getSettings().theme) || 'dark');
-      if (Auth.isAuthenticated()) {
-        window.location.replace('dashboard.html');
-        return;
-      }
+      UI.applyTheme(UI.getPrefs().theme || 'dark');
+      const me = await Auth.currentUser();
+      if (me) { window.location.replace('dashboard.html'); return; }
 
       const form = document.getElementById('register-form');
 
@@ -158,22 +159,33 @@
         form.querySelectorAll('.field').forEach((f) => f.classList.remove('invalid'));
       }
 
-      // Live username availability check
+      const VALID_USERNAME = /^[a-zA-Z0-9_]{3,20}$/;
       const usernameInput = document.getElementById('username');
-      usernameInput.addEventListener('input', () => {
-        const v = Auth.normalizeUsername(usernameInput.value);
-        usernameInput.value = v;
+      const checkUser = UI.debounce(async () => {
+        const v = usernameInput.value.trim();
         if (!v) { setError('username', null); return; }
-        if (!Auth.isValidUsername(v)) {
-          setError('username', 'Use 3 a 20 caracteres (letras, números, _).');
-          return;
+        if (!VALID_USERNAME.test(v)) { setError('username', 'Use 3 a 20 caracteres (letras, números, _).'); return; }
+        if (window.Nexa?.isReady()) {
+          try {
+            const { data: avail } = await window.Nexa.client.rpc('username_available', { p_username: v });
+            if (avail === false) setError('username', 'Este nome já está em uso.');
+            else setError('username', null);
+          } catch { setError('username', null); }
+        } else {
+          // demo: check local accounts
+          try {
+            const accounts = JSON.parse(localStorage.getItem('nexa.demo.accounts') || '[]');
+            const taken = accounts.some((a) => a.username.toLowerCase() === v.toLowerCase());
+            setError('username', taken ? 'Este nome já está em uso.' : null);
+          } catch {}
         }
-        const existing = DB.users.find((u) => u.username === v);
-        if (existing) setError('username', 'Este nome já está em uso.');
-        else setError('username', null);
+      }, 300);
+      usernameInput.addEventListener('input', () => {
+        usernameInput.value = usernameInput.value.replace(/[^a-zA-Z0-9_]/g, '');
+        checkUser();
       });
 
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
         clearErrors();
         if (!document.getElementById('terms').checked) {
@@ -181,32 +193,52 @@
           return;
         }
         const data = {
-          username: form.username.value,
-          email: form.email.value,
+          username: form.username.value.trim(),
+          email: form.email.value.trim().toLowerCase(),
           password: form.password.value,
           confirmPassword: form.confirmPassword.value,
-          displayName: form.displayName.value,
+          displayName: form.displayName.value.trim(),
         };
+        let bad = false;
+        if (!data.username) { setError('username', 'Informe seu usuário.'); bad = true; }
+        if (!VALID_USERNAME.test(data.username)) { setError('username', 'Use 3 a 20 caracteres (letras, números, _).'); bad = true; }
+        if (!data.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) { setError('email', 'E-mail inválido.'); bad = true; }
+        if (!data.password || data.password.length < 6) { setError('password', 'A senha precisa ter pelo menos 6 caracteres.'); bad = true; }
+        if (data.password !== data.confirmPassword) { setError('confirmPassword', 'As senhas não coincidem.'); bad = true; }
+        if (bad) { UI.toast.error('Por favor, corrija os erros do formulário.'); return; }
+
         const btn = form.querySelector('button[type="submit"]');
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span> Criando sua conta...';
 
-        setTimeout(() => {
-          const res = Auth.register(data);
-          if (!res.ok) {
-            Object.entries(res.errors).forEach(([k, msg]) => setError(k, msg));
-            UI.toast.error('Por favor, corrija os erros do formulário.');
-            btn.disabled = false;
-            btn.innerHTML = '<span data-icon="checkCircle"></span> Criar conta gratuita';
-            Icons.hydrate(btn);
-            return;
+        try {
+          const profile = await Auth.register({
+            username: data.username,
+            email: data.email,
+            password: data.password,
+            displayName: data.displayName,
+            avatar: 'gradient-1',
+          });
+          if (profile) {
+            await Activity.record({
+              userId: profile.id, type: 'signup',
+              message: 'Cadastro realizado com sucesso.',
+            });
           }
-          // Auto-login
-          Auth.login({ identifier: res.user.username, password: data.password });
-          Notifications.seedDefaults(res.user.id);
           UI.toast.success('Conta criada! Redirecionando...');
           setTimeout(() => window.location.assign('dashboard.html'), 450);
-        }, 500);
+        } catch (err) {
+          if (err?.code === 'username_taken') setError('username', 'Este nome já está em uso.');
+          if (err?.code === 'email_confirmation_required') {
+            UI.toast.warn('Cadastro ok! Confirme o e-mail e faça login.', 'Confirmação necessária');
+            setTimeout(() => window.location.assign('index.html'), 1800);
+          } else {
+            UI.toast.error(err?.message || 'Não foi possível criar a conta.');
+          }
+          btn.disabled = false;
+          btn.innerHTML = '<span data-icon="checkCircle"></span> Criar conta gratuita';
+          Icons.hydrate(btn);
+        }
       });
     })();
   </script>

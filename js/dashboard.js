@@ -1,191 +1,217 @@
 /* ============================================================
-   NexaBots — Dashboard page
+   NexaBots V2 — Dashboard
    ============================================================ */
 (function (global) {
   'use strict';
 
-  function userOrders(userId) {
-    return DB.orders.filter((o) => o.userId === userId);
-  }
+  const Dashboard = {
+    async init(ctx) {
+      if (!ctx) return;
+      const { content, user } = ctx;
+      if (!user) return;
 
-  function metrics(userId) {
-    const orders = userOrders(userId);
-    const total = orders.length;
-    const delivered = orders.filter((o) => o.status === 'entregue').length;
-    const spent = orders.filter((o) => o.status !== 'cancelado').reduce((s, o) => s + (o.price || 0), 0);
-    const activeBots = delivered; // simulated 1 active bot per delivered order
-    return { total, delivered, spent, activeBots };
-  }
+      content.innerHTML = `
+        <div class="welcome-banner">
+          <h2>Olá, <span class="gradient-text">${UI.escapeHtml(user.display_name || user.username)}</span> 👋</h2>
+          <p>Bem-vindo(a) ao painel do NexaBots V2 — gerencie suas compras, ative serviços e descubra novidades no marketplace.</p>
+          <div class="actions">
+            <a href="store.html" class="btn btn-primary"><span data-icon="store"></span> Ir para o marketplace</a>
+            <a href="discord.html" class="btn btn-ghost"><span data-icon="discord"></span> Suporte Discord</a>
+          </div>
+        </div>
 
-  function renderStats(userId) {
-    const { total, delivered, spent, activeBots } = metrics(userId);
-    return `
-      <div class="grid grid-stats">
-        <div class="card card-stat animate-in" style="animation-delay:.05s">
-          <span class="stat-icon">${Icons.svg('purchases')}</span>
-          <span class="stat-label">Total de Compras</span>
-          <span class="stat-value">${total}</span>
-          <span class="stat-trend up">${Icons.svg('trendingUp')} ${total > 0 ? '+' + total : '0'} no total</span>
+        <div class="grid grid-4 mb-6" id="metrics">
+          ${UI.skeleton(4, 'tile')}
         </div>
-        <div class="card card-stat animate-in" style="animation-delay:.1s">
-          <span class="stat-icon">${Icons.svg('bot')}</span>
-          <span class="stat-label">Bots Ativos</span>
-          <span class="stat-value">${activeBots}</span>
-          <span class="stat-trend up">${Icons.svg('checkCircle')} Funcionando 24/7</span>
+
+        <div class="grid grid-3" style="align-items:stretch;">
+          <div class="card span-2">
+            <div class="card-header">
+              <h3>Vendas (últimos 7 dias)</h3>
+              <span class="badge badge-soft" id="chart-total">—</span>
+            </div>
+            <div class="bar-chart" id="bar-chart"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Atividade recente</h3>
+              <a class="link" href="profile.html">Ver tudo</a>
+            </div>
+            <div class="activity-feed" id="activity-feed">
+              ${UI.skeleton(4, 'row')}
+            </div>
+          </div>
         </div>
-        <div class="card card-stat animate-in" style="animation-delay:.15s">
-          <span class="stat-icon">${Icons.svg('dollar')}</span>
-          <span class="stat-label">Investimento Total</span>
-          <span class="stat-value">${UI.formatBRL(spent)}</span>
-          <span class="stat-trend up">${Icons.svg('trendingUp')} Em planos NexaBots</span>
+
+        <div class="grid grid-2 mt-6" style="align-items:stretch;">
+          <div class="card">
+            <div class="card-header">
+              <h3>Suas compras recentes</h3>
+              <a class="link" href="purchases.html">Ver todas</a>
+            </div>
+            <div id="recent-purchases">${UI.skeleton(3, 'row')}</div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Sugestões para você</h3>
+              <a class="link" href="store.html">Marketplace</a>
+            </div>
+            <div id="suggestions" class="grid grid-2" style="gap:12px;">
+              ${UI.skeleton(2, 'tile')}
+            </div>
+          </div>
         </div>
-        <div class="card card-stat animate-in" style="animation-delay:.2s">
-          <span class="stat-icon">${Icons.svg('checkCircle')}</span>
-          <span class="stat-label">Compras Entregues</span>
-          <span class="stat-value">${delivered}</span>
-          <span class="stat-trend up">${Icons.svg('check')} Aprovadas e ativas</span>
-        </div>
+      `;
+      Icons.hydrate(content);
+
+      try {
+        const [purchases, products, activity] = await Promise.all([
+          DB.purchases.byUser(user.id),
+          DB.products.all(),
+          DB.activity.byUser(user.id, 8),
+        ]);
+        renderMetrics(content, purchases);
+        renderChart(content, purchases);
+        renderActivity(content, activity);
+        renderRecentPurchases(content, purchases);
+        renderSuggestions(content, products, purchases);
+      } catch (err) {
+        console.error('[Dashboard] erro:', err);
+        UI.toast.error('Não foi possível carregar todos os dados.');
+      }
+    },
+  };
+
+  function renderMetrics(content, purchases) {
+    const total = purchases.length;
+    const pendentes = purchases.filter((p) => p.status === 'pendente').length;
+    const aprovados = purchases.filter((p) => p.status === 'aprovado').length;
+    const entregues = purchases.filter((p) => p.status === 'entregue').length;
+    const totalSpent = purchases
+      .filter((p) => p.status !== 'cancelado')
+      .reduce((sum, p) => sum + Number(p.price || 0), 0);
+
+    content.querySelector('#metrics').innerHTML = `
+      <div class="metric"><div class="ring" style="--metric-color: radial-gradient(circle, rgba(124,58,237,0.4), transparent 70%)"></div>
+        <div class="label">Pedidos</div><div class="value">${total}</div>
+        <div class="delta up">+${entregues + aprovados} ativos</div>
+      </div>
+      <div class="metric"><div class="ring" style="--metric-color: radial-gradient(circle, rgba(34,211,238,0.4), transparent 70%)"></div>
+        <div class="label">Pendentes</div><div class="value">${pendentes}</div>
+        <div class="delta">${pendentes > 0 ? 'Aguardando confirmação' : 'Tudo em dia'}</div>
+      </div>
+      <div class="metric"><div class="ring" style="--metric-color: radial-gradient(circle, rgba(244,114,182,0.4), transparent 70%)"></div>
+        <div class="label">Entregues</div><div class="value">${entregues}</div>
+        <div class="delta up">${entregues > 0 ? 'Tudo certo!' : '—'}</div>
+      </div>
+      <div class="metric"><div class="ring" style="--metric-color: radial-gradient(circle, rgba(34,197,94,0.4), transparent 70%)"></div>
+        <div class="label">Total investido</div><div class="value">${UI.formatBRL(totalSpent)}</div>
+        <div class="delta up">com NexaBots</div>
       </div>
     `;
   }
 
-  function renderActivity(userId) {
-    const items = Activity.listForUser(userId, 8);
-    if (items.length === 0) {
-      return `
-        <div class="empty-state">
+  function renderChart(content, purchases) {
+    const chart = content.querySelector('#bar-chart');
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+      const count = purchases.filter((p) => (p.created_at || '').slice(0, 10) === key).length;
+      days.push({ label, count });
+    }
+    const max = Math.max(1, ...days.map((d) => d.count));
+    chart.innerHTML = days.map((d) =>
+      `<div class="bar" style="height:${Math.max(8, (d.count / max) * 100)}%" data-label="${UI.escapeHtml(d.label)}"></div>`
+    ).join('');
+    content.querySelector('#chart-total').textContent = `Total: ${days.reduce((a, b) => a + b.count, 0)}`;
+  }
+
+  function renderActivity(content, activity) {
+    const feed = content.querySelector('#activity-feed');
+    if (!activity.length) {
+      feed.innerHTML = `
+        <div class="empty-state" style="padding:24px 8px;">
           ${Icons.svg('activity')}
-          <h3>Sem atividade ainda</h3>
-          <p>Sua atividade recente vai aparecer aqui assim que você começar a usar a plataforma.</p>
-        </div>
-      `;
+          <h3 style="font-size:14px;margin-top:6px;">Sem atividade ainda</h3>
+          <p>Quando você usar a plataforma, sua atividade aparece aqui.</p>
+        </div>`;
+      Icons.hydrate(feed);
+      return;
     }
-    return `
-      <div class="activity-feed">
-        ${items.map((it) => {
-          const meta = Activity.getMeta(it.type);
-          return `
-            <div class="activity-item ${meta.class}">
-              <span class="ico">${Icons.svg(meta.icon)}</span>
-              <div class="body">
-                <div class="msg">${UI.escapeHtml(it.message)}</div>
-                <div class="meta">${UI.formatDate(it.timestamp)} • ${UI.timeAgo(it.timestamp)}</div>
-              </div>
-            </div>
-          `;
-        }).join('')}
+    feed.innerHTML = activity.map((a) => `
+      <div class="activity-item">
+        <span class="ico">${Icons.svg(iconForActivity(a.type))}</span>
+        <div style="flex:1;min-width:0;">
+          <div>${UI.escapeHtml(a.message || a.type)}</div>
+          <div class="time">${UI.timeAgo(a.created_at || a.timestamp)}</div>
+        </div>
       </div>
-    `;
+    `).join('');
   }
 
-  function renderChart() {
-    // Generate fake but pretty bars
-    const labels = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    const values = labels.map(() => Math.floor(20 + Math.random() * 80));
-    const max = Math.max(...values);
-    return `
-      <div class="bar-chart">
-        ${values.map((v, i) => `<div class="bar" data-label="${labels[i]}" style="height:${(v / max * 100).toFixed(0)}%; opacity:${0.55 + (v/max)*0.45}"></div>`).join('')}
-      </div>
-    `;
+  function iconForActivity(type) {
+    if (type === 'login') return 'arrowRight';
+    if (type === 'logout') return 'logout';
+    if (type === 'signup') return 'user';
+    if (type === 'purchase_created') return 'shoppingBag';
+    if (type === 'purchase_updated' || type === 'status_change') return 'check';
+    if (type === 'profile_updated') return 'edit';
+    return 'activity';
   }
 
-  function renderRecentOrders(userId) {
-    const orders = userOrders(userId).slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
-    if (orders.length === 0) {
-      return `
-        <div class="empty-state">
+  function renderRecentPurchases(content, purchases) {
+    const root = content.querySelector('#recent-purchases');
+    const items = purchases.slice(0, 5);
+    if (!items.length) {
+      root.innerHTML = `
+        <div class="empty-state" style="padding:20px;">
           ${Icons.svg('shoppingBag')}
-          <h3>Nenhuma compra ainda</h3>
-          <p>Confira nossos planos e dê o primeiro passo na sua jornada NexaBots.</p>
-          <a href="plans.html" class="btn btn-primary mt-4">${Icons.svg('plans')} Ver planos</a>
-        </div>
-      `;
+          <h3 style="font-size:14px;margin-top:6px;">Nenhuma compra ainda</h3>
+          <p>Visite o marketplace para começar.</p>
+          <a href="store.html" class="btn btn-primary btn-sm" style="margin-top:8px;">Ver marketplace</a>
+        </div>`;
+      Icons.hydrate(root);
+      return;
     }
-    return `
-      <div class="table-wrap">
-        <table class="table">
-          <thead><tr><th>Plano</th><th>Data</th><th>Valor</th><th>Status</th></tr></thead>
-          <tbody>
-            ${orders.map((o) => `
-              <tr>
-                <td><strong>${UI.escapeHtml(o.planName)}</strong></td>
-                <td>${UI.formatDate(o.createdAt, { day:'2-digit', month:'short', year:'numeric' })}</td>
-                <td>${UI.formatBRL(o.price)}</td>
-                <td>${Purchases ? Purchases.statusBadge(o.status) : `<span class="badge">${o.status}</span>`}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  function init() {
-    const user = Auth.currentUser();
-    if (!user) return;
-    const main = document.querySelector('.content');
-    if (!main) return;
-
-    const greet = (() => {
-      const h = new Date().getHours();
-      if (h < 5) return 'Boa madrugada';
-      if (h < 12) return 'Bom dia';
-      if (h < 18) return 'Boa tarde';
-      return 'Boa noite';
-    })();
-
-    main.innerHTML = `
-      <section class="welcome-banner animate-in">
-        <h2>${greet}, ${UI.escapeHtml(user.displayName || user.username)} 👋</h2>
-        <p>Bem-vindo(a) de volta ao seu painel NexaBots. Aqui está um resumo da sua atividade e do desempenho dos seus bots.</p>
-        <div class="actions">
-          <a class="btn btn-primary" href="plans.html">${Icons.svg('plans')} Ver planos</a>
-          <a class="btn btn-ghost" href="store.html">${Icons.svg('store')} Explorar loja</a>
-          <a class="btn btn-ghost" href="discord.html">${Icons.svg('discord')} Suporte Discord</a>
-        </div>
-      </section>
-
-      <div data-stats>${renderStats(user.id)}</div>
-
-      <div class="grid mt-6" style="grid-template-columns: 1.4fr 1fr; gap:16px;">
-        <div class="card animate-in">
-          <div class="flex justify-between items-center" style="margin-bottom:8px;">
-            <div>
-              <div class="card-title">${Icons.svg('activity')} Visão semanal</div>
-              <div class="card-subtitle">Engajamento simulado dos seus bots nos últimos 7 dias</div>
-            </div>
-            <div class="badge badge-purple no-dot">Demo</div>
-          </div>
-          ${renderChart()}
-        </div>
-        <div class="card animate-in" style="animation-delay:.05s">
-          <div class="card-title">${Icons.svg('purchases')} Últimas compras</div>
-          <div class="card-subtitle">Histórico recente de pedidos</div>
-          <div data-recent>${renderRecentOrders(user.id)}</div>
-        </div>
-      </div>
-
-      <div class="grid mt-6" style="grid-template-columns: 1fr 1fr; gap:16px;">
-        <div class="card animate-in">
-          <div class="card-title">${Icons.svg('compass')} Atalhos rápidos</div>
-          <div class="card-subtitle">Acesse rapidamente as áreas mais usadas</div>
-          <div class="grid grid-2 mt-2" style="gap:10px;">
-            <a class="btn btn-ghost" href="profile.html">${Icons.svg('user')} Meu perfil</a>
-            <a class="btn btn-ghost" href="purchases.html">${Icons.svg('purchases')} Minhas compras</a>
-            <a class="btn btn-ghost" href="store.html">${Icons.svg('store')} Loja de bots</a>
-            <a class="btn btn-ghost" href="settings.html">${Icons.svg('settings')} Configurações</a>
+    root.innerHTML = items.map((p) => `
+      <div class="row-item">
+        <div class="row-left">
+          <span class="ico cat-${p.product_category || 'bots'}">${Icons.svg('shoppingBag')}</span>
+          <div>
+            <div class="ttl">${UI.escapeHtml(p.product_name)}</div>
+            <div class="sub">${UI.formatDate(p.created_at)} • ${UI.formatBRL(p.price)}</div>
           </div>
         </div>
-        <div class="card animate-in" style="animation-delay:.05s">
-          <div class="card-title">${Icons.svg('activity')} Atividade recente</div>
-          <div class="card-subtitle">O que aconteceu na sua conta</div>
-          <div data-activity>${renderActivity(user.id)}</div>
-        </div>
+        ${UI.statusBadge(p.status)}
       </div>
-    `;
-    Icons.hydrate(main);
+    `).join('');
+    Icons.hydrate(root);
   }
 
-  global.Dashboard = { init };
+  function renderSuggestions(content, products, purchases) {
+    const purchasedIds = new Set(purchases.map((p) => p.product_id));
+    const recommended = products.filter((p) => p.recommended && p.active !== false && !purchasedIds.has(p.id)).slice(0, 4);
+    const fallback = products.filter((p) => !purchasedIds.has(p.id)).slice(0, 4);
+    const list = (recommended.length ? recommended : fallback).slice(0, 2);
+    const root = content.querySelector('#suggestions');
+    if (!list.length) {
+      root.innerHTML = `<div class="empty-state" style="padding:20px;">${Icons.svg('compass')}<h3 style="font-size:14px;margin-top:6px;">Você já tem tudo!</h3><p>Em breve, novas surpresas.</p></div>`;
+      Icons.hydrate(root);
+      return;
+    }
+    root.innerHTML = list.map((p) => `
+      <a href="store.html?product=${UI.escapeHtml(p.id)}" class="suggest">
+        <div class="suggest-thumb">${Icons.svg(p.icon || 'bot')}</div>
+        <div>
+          <div class="ttl">${UI.escapeHtml(p.name)}</div>
+          <div class="sub">${UI.escapeHtml(UI.CATEGORY_META[p.category]?.label || p.category)} • ${UI.formatBRL(p.price)}</div>
+        </div>
+      </a>
+    `).join('');
+    Icons.hydrate(root);
+  }
+
+  global.Dashboard = Dashboard;
 })(window);

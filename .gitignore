@@ -18,3 +18,7 @@ pnpm-lock.yaml
 
 # Backups
 *.bak
+
+# Local config (contém chaves do Supabase do usuário)
+js/config.js
+
