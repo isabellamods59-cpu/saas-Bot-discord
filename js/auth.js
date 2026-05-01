@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Auth (Supabase + fallback localStorage demo)
+   Nexa Serviços V2 — Auth (Supabase + fallback localStorage demo)
 
    API:
      Auth.register({ username, email, password, displayName, avatar })
@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const ADMIN_EMAIL = (window.NEXA_CONFIG?.ADMIN_EMAIL || 'admin@nexabots.app').toLowerCase();
+  const ADMIN_EMAIL = (window.NEXA_CONFIG?.ADMIN_EMAIL || 'admin@nexaservicos.app').toLowerCase();
 
   const DEMO = {
     profiles: 'nexa.demo.profiles',

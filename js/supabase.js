@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Supabase wrapper (window.Nexa)
+   Nexa Serviços V2 — Supabase wrapper (window.Nexa)
 
    Carregamento esperado:
      <script src="js/config.js"></script>
@@ -35,7 +35,7 @@
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,
-          storageKey: 'nexabots.supabase.auth',
+          storageKey: 'nexa.supabase.auth',
         },
       });
       ready = true;

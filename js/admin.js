@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Painel Admin
+   Nexa Serviços V2 — Painel Admin
    Tabs: Visão geral, Usuários, Pedidos, Produtos, Logs
    ============================================================ */
 (function (global) {

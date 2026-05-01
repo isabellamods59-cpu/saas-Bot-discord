@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Minhas compras
+   Nexa Serviços V2 — Minhas compras
    ============================================================ */
 (function (global) {
   'use strict';

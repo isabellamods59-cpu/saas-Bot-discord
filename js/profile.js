@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Perfil do usuário
+   Nexa Serviços V2 — Perfil do usuário
    ============================================================ */
 (function (global) {
   'use strict';

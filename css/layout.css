@@ -133,6 +133,12 @@
   border-top: 1px solid var(--border);
   padding: 12px 14px;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.sidebar-foot-user {
+  display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
@@ -140,6 +146,26 @@
 .sidebar-foot .who { display: flex; flex-direction: column; min-width: 0; }
 .sidebar-foot .who .uname { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sidebar-foot .who .role { font-size: 11px; color: var(--text-3); }
+.btn-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.18);
+}
+.btn-logout:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border-color: transparent;
+  box-shadow: 0 8px 22px -10px rgba(220, 38, 38, 0.65);
+}
+.btn-logout .icon { width: 16px; height: 16px; }
+.app-shell.collapsed .btn-logout span { display: none; }
+.app-shell.collapsed .btn-logout { padding: 8px; }
 
 /* ---------- Topbar ---------- */
 .topbar {

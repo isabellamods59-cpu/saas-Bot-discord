@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — UI utilities
+   Nexa Serviços V2 — UI utilities
    - Toast system
    - Modal helpers
    - Theme / sidebar toggles (localStorage-backed prefs)

@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Demo seed (apenas no modo LocalStorage)
+   Nexa Serviços V2 — Demo seed (apenas no modo LocalStorage)
    No modo Supabase, o seed real está em supabase/seed.sql.
    ============================================================ */
 (function () {
@@ -21,9 +21,9 @@
         for (let i = 0; i < str.length; i++) h = ((h << 5) + h) + str.charCodeAt(i);
         return String(h >>> 0);
       }
-      accounts.push({ id, username: 'admin', email: 'admin@nexabots.app', password: fakeHash('admin123') });
+      accounts.push({ id, username: 'admin', email: 'admin@nexaservicos.app', password: fakeHash('admin123') });
       profiles.push({
-        id, username: 'admin', email: 'admin@nexabots.app',
+        id, username: 'admin', email: 'admin@nexaservicos.app',
         display_name: 'Administrador', avatar: 'gradient-2', role: 'admin',
         bio: 'Operações da plataforma.',
         created_at: new Date().toISOString(),

@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Suporte Discord
+   Nexa Serviços V2 — Suporte Discord
    ============================================================ */
 (function (global) {
   'use strict';
@@ -7,13 +7,13 @@
     async init(ctx) {
       if (!ctx) return;
       const { content } = ctx;
-      const invite = (window.NEXA_CONFIG?.DISCORD_INVITE) || 'https://discord.gg/nexabots';
+      const invite = (window.NEXA_CONFIG?.DISCORD_INVITE) || 'https://discord.gg/FtWhZEyne';
 
       content.innerHTML = `
         <div class="discord-hero">
           <div class="discord-hero-bg"></div>
           <div class="discord-hero-content">
-            <span class="badge badge-soft" style="margin-bottom:10px;">${Icons.svg('discord')} Suporte oficial NexaBots</span>
+            <span class="badge badge-soft" style="margin-bottom:10px;">${Icons.svg('discord')} Suporte oficial Nexa Serviços</span>
             <h1>Pagamento e suporte 100% manuais via Discord</h1>
             <p>Para comprar, ativar produtos ou tirar dúvidas, abra um ticket no nosso servidor. Nosso time atende rapidinho. ⚡</p>
             <div class="actions">
@@ -33,7 +33,7 @@
           <div class="card step">
             <span class="step-num">2</span>
             <h3>Abra um ticket</h3>
-            <p class="muted">No Discord, vá ao canal #abrir-ticket e descreva seu pedido. Time NexaBots responde em minutos.</p>
+            <p class="muted">No Discord, vá ao canal #abrir-ticket e descreva seu pedido. Time Nexa Serviços responde em minutos.</p>
             <a class="btn btn-ghost btn-sm mt-2" href="${invite}" target="_blank">${Icons.svg('arrowUpRight')} Abrir Discord</a>
           </div>
           <div class="card step">
