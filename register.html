@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Crie sua conta no NexaBots e tenha acesso aos melhores bots para Discord." />
+  <meta name="theme-color" content="#7c3aed" />
+  <title>Criar conta — NexaBots</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="auth-side">
+      <div class="auth-brand">
+        <span class="logo" data-icon="bot"></span>
+        <span class="brand-name">NexaBots</span>
+        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">PRO</span>
+      </div>
+
+      <div class="auth-hero">
+        <h1>Junte-se à <span class="gradient-text">revolução</span> dos bots de Discord.</h1>
+        <p>Crie sua conta gratuita e tenha acesso a uma plataforma completa de bots premium, com configuração em minutos e suporte humanizado 24/7.</p>
+
+        <div class="auth-features">
+          <div class="auth-feature">
+            <span class="check" data-icon="check"></span>
+            <div>
+              <div class="feat-title">100% gratuito para começar</div>
+              <div class="feat-desc">Crie sua conta sem custo, escolha um plano quando quiser.</div>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <span class="check" data-icon="bolt"></span>
+            <div>
+              <div class="feat-title">Setup automático</div>
+              <div class="feat-desc">Configure seu bot em poucos cliques.</div>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <span class="check" data-icon="crown"></span>
+            <div>
+              <div class="feat-title">Recursos premium</div>
+              <div class="feat-desc">Comandos slash, embeds, multi-server e muito mais.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-foot">
+        <span>© 2025 NexaBots</span>
+        <span>•</span>
+        <span>Termos</span>
+        <span>•</span>
+        <span>Privacidade</span>
+      </div>
+    </section>
+
+    <section class="auth-form-side">
+      <div class="auth-form-card">
+        <h2>Crie sua conta</h2>
+        <p class="lead">Leva menos de um minuto. É grátis.</p>
+
+        <form id="register-form" autocomplete="on" novalidate>
+          <div class="form-row">
+            <div class="field" data-field="displayName">
+              <label class="field-label" for="displayName">Nome completo</label>
+              <input class="input" id="displayName" name="displayName" type="text" placeholder="ex: Maria Silva" autocomplete="name" />
+              <span class="field-error">Informe seu nome.</span>
+            </div>
+            <div class="field" data-field="username">
+              <label class="field-label" for="username">Nome de usuário</label>
+              <input class="input" id="username" name="username" type="text" placeholder="ex: mariasilva" required autocomplete="username" />
+              <span class="field-error">Use 3 a 20 caracteres (letras, números, _).</span>
+            </div>
+          </div>
+
+          <div class="field" data-field="email">
+            <label class="field-label" for="email">E-mail</label>
+            <div class="input-icon">
+              <span data-icon="mail"></span>
+              <input class="input" id="email" name="email" type="email" placeholder="voce@email.com" required autocomplete="email" />
+            </div>
+            <span class="field-error">E-mail inválido.</span>
+          </div>
+
+          <div class="form-row">
+            <div class="field" data-field="password">
+              <label class="field-label" for="password">Senha</label>
+              <div class="input-icon" style="position:relative;">
+                <span data-icon="lock"></span>
+                <input class="input" id="password" name="password" type="password" placeholder="Mínimo 6 caracteres" required autocomplete="new-password" minlength="6" />
+              </div>
+              <span class="field-hint">Mínimo 6 caracteres.</span>
+              <span class="field-error">A senha precisa ter pelo menos 6 caracteres.</span>
+            </div>
+            <div class="field" data-field="confirmPassword">
+              <label class="field-label" for="confirmPassword">Confirmar senha</label>
+              <div class="input-icon">
+                <span data-icon="lock"></span>
+                <input class="input" id="confirmPassword" name="confirmPassword" type="password" placeholder="Repita a senha" required autocomplete="new-password" />
+              </div>
+              <span class="field-error">As senhas não coincidem.</span>
+            </div>
+          </div>
+
+          <label class="checkbox" style="margin-top:6px;">
+            <input type="checkbox" id="terms" required />
+            <span class="box"></span>
+            <span>Eu concordo com os <a href="#">Termos de Uso</a> e <a href="#">Política de Privacidade</a>.</span>
+          </label>
+
+          <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit">
+            <span data-icon="checkCircle"></span>
+            Criar conta gratuita
+          </button>
+        </form>
+
+        <div class="auth-divider">ou</div>
+
+        <p class="auth-switch">
+          Já tem uma conta? <a href="index.html">Entrar agora</a>
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/activity.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      UI.applyTheme((DB.meta.getSettings().theme) || 'dark');
+      if (Auth.isAuthenticated()) {
+        window.location.replace('dashboard.html');
+        return;
+      }
+
+      const form = document.getElementById('register-form');
+
+      function setError(field, msg) {
+        const el = form.querySelector(`[data-field="${field}"]`);
+        if (!el) return;
+        el.classList.toggle('invalid', !!msg);
+        if (msg) el.querySelector('.field-error').textContent = msg;
+      }
+      function clearErrors() {
+        form.querySelectorAll('.field').forEach((f) => f.classList.remove('invalid'));
+      }
+
+      // Live username availability check
+      const usernameInput = document.getElementById('username');
+      usernameInput.addEventListener('input', () => {
+        const v = Auth.normalizeUsername(usernameInput.value);
+        usernameInput.value = v;
+        if (!v) { setError('username', null); return; }
+        if (!Auth.isValidUsername(v)) {
+          setError('username', 'Use 3 a 20 caracteres (letras, números, _).');
+          return;
+        }
+        const existing = DB.users.find((u) => u.username === v);
+        if (existing) setError('username', 'Este nome já está em uso.');
+        else setError('username', null);
+      });
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        clearErrors();
+        if (!document.getElementById('terms').checked) {
+          UI.toast.warn('Você precisa concordar com os termos para continuar.');
+          return;
+        }
+        const data = {
+          username: form.username.value,
+          email: form.email.value,
+          password: form.password.value,
+          confirmPassword: form.confirmPassword.value,
+          displayName: form.displayName.value,
+        };
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Criando sua conta...';
+
+        setTimeout(() => {
+          const res = Auth.register(data);
+          if (!res.ok) {
+            Object.entries(res.errors).forEach(([k, msg]) => setError(k, msg));
+            UI.toast.error('Por favor, corrija os erros do formulário.');
+            btn.disabled = false;
+            btn.innerHTML = '<span data-icon="checkCircle"></span> Criar conta gratuita';
+            Icons.hydrate(btn);
+            return;
+          }
+          // Auto-login
+          Auth.login({ identifier: res.user.username, password: data.password });
+          Notifications.seedDefaults(res.user.id);
+          UI.toast.success('Conta criada! Redirecionando...');
+          setTimeout(() => window.location.assign('dashboard.html'), 450);
+        }, 500);
+      });
+    })();
+  </script>
+</body>
+</html>

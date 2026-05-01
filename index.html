@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="NexaBots — Plataforma premium de bots para Discord. Entre na sua conta e gerencie seus bots." />
+  <meta name="theme-color" content="#7c3aed" />
+  <title>Entrar — NexaBots</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body>
+  <div class="auth-shell">
+    <section class="auth-side">
+      <div class="auth-brand">
+        <span class="logo" data-icon="bot"></span>
+        <span class="brand-name">NexaBots</span>
+        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">PRO</span>
+      </div>
+
+      <div class="auth-hero">
+        <h1>Bots que sua comunidade <span class="gradient-text">merece.</span></h1>
+        <p>Bem-vindo(a) ao NexaBots — a plataforma premium de bots para Discord. Música, moderação, economia, tickets e muito mais, em um único lugar.</p>
+
+        <div class="auth-features">
+          <div class="auth-feature">
+            <span class="check" data-icon="bolt"></span>
+            <div>
+              <div class="feat-title">Configuração em minutos</div>
+              <div class="feat-desc">Painel intuitivo, sem complicação técnica.</div>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <span class="check" data-icon="shield"></span>
+            <div>
+              <div class="feat-title">Moderação inteligente</div>
+              <div class="feat-desc">Anti-raid, anti-spam e captcha integrados.</div>
+            </div>
+          </div>
+          <div class="auth-feature">
+            <span class="check" data-icon="headset"></span>
+            <div>
+              <div class="feat-title">Suporte 24/7 via Discord</div>
+              <div class="feat-desc">Time dedicado pronto para te atender.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-foot">
+        <span>© 2025 NexaBots</span>
+        <span>•</span>
+        <span>Termos</span>
+        <span>•</span>
+        <span>Privacidade</span>
+      </div>
+    </section>
+
+    <section class="auth-form-side">
+      <div class="auth-form-card">
+        <h2>Acesse sua conta</h2>
+        <p class="lead">Entre com seu nome de usuário ou e-mail para continuar.</p>
+
+        <form id="login-form" autocomplete="on" novalidate>
+          <div class="field" data-field="identifier">
+            <label class="field-label" for="identifier">Usuário ou e-mail</label>
+            <div class="input-icon">
+              <span data-icon="user"></span>
+              <input class="input" id="identifier" name="identifier" type="text" placeholder="ex: minhaconta ou voce@email.com" required autocomplete="username" />
+            </div>
+            <span class="field-error">Informe usuário ou e-mail.</span>
+          </div>
+
+          <div class="field" data-field="password">
+            <label class="field-label" for="password">Senha</label>
+            <div class="input-icon" style="position:relative;">
+              <span data-icon="lock"></span>
+              <input class="input" id="password" name="password" type="password" placeholder="••••••••" required autocomplete="current-password" />
+              <button type="button" class="btn-icon" data-toggle-pass aria-label="Mostrar senha" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;color:var(--text-3);">
+                <span data-icon="eye"></span>
+              </button>
+            </div>
+            <span class="field-error">Informe sua senha.</span>
+          </div>
+
+          <div class="form-actions-row">
+            <label class="checkbox">
+              <input type="checkbox" name="remember" checked />
+              <span class="box"></span>
+              <span>Lembrar de mim</span>
+            </label>
+            <a href="#" id="forgot-link">Esqueci a senha</a>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg btn-block auth-submit">
+            <span data-icon="arrowRight"></span>
+            Entrar
+          </button>
+        </form>
+
+        <div class="auth-divider">ou</div>
+
+        <p class="auth-switch">
+          Ainda não tem uma conta? <a href="register.html">Criar conta gratuita</a>
+        </p>
+
+        <div class="alert info" style="margin-top:24px;">
+          <span data-icon="info"></span>
+          <div>
+            <div class="alert-title">Conta de demonstração</div>
+            <div class="alert-body">Use <code class="code">admin</code> / <code class="code">admin123</code> para entrar como administrador.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/icons.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/seed.js"></script>
+  <script src="js/activity.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ui.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      // Apply persisted theme + redirect if already logged in.
+      UI.applyTheme((DB.meta.getSettings().theme) || 'dark');
+      if (Auth.isAuthenticated()) {
+        window.location.replace('dashboard.html');
+        return;
+      }
+
+      const form = document.getElementById('login-form');
+      const identifier = document.getElementById('identifier');
+      const password = document.getElementById('password');
+
+      // Show/hide password
+      document.querySelector('[data-toggle-pass]').addEventListener('click', () => {
+        const isPwd = password.type === 'password';
+        password.type = isPwd ? 'text' : 'password';
+        document.querySelector('[data-toggle-pass] [data-icon]').setAttribute('data-icon', isPwd ? 'eyeOff' : 'eye');
+        Icons.hydrate(document.querySelector('[data-toggle-pass]'));
+      });
+
+      // Forgot link (mock)
+      document.getElementById('forgot-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        UI.toast.info('Para recuperar senha, abra um ticket no nosso Discord.', 'Recuperar senha');
+      });
+
+      function setError(field, msg) {
+        const el = form.querySelector(`[data-field="${field}"]`);
+        if (!el) return;
+        el.classList.toggle('invalid', !!msg);
+        if (msg) el.querySelector('.field-error').textContent = msg;
+      }
+      function clearErrors() {
+        form.querySelectorAll('.field').forEach((f) => f.classList.remove('invalid'));
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        clearErrors();
+        const idVal = identifier.value.trim();
+        const pwVal = password.value;
+        let bad = false;
+        if (!idVal) { setError('identifier', 'Informe usuário ou e-mail.'); bad = true; }
+        if (!pwVal) { setError('password', 'Informe sua senha.'); bad = true; }
+        if (bad) return;
+
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Entrando...';
+
+        setTimeout(() => {
+          const res = Auth.login({ identifier: idVal, password: pwVal });
+          if (!res.ok) {
+            UI.toast.error(res.error || 'Não foi possível entrar.');
+            btn.disabled = false;
+            btn.innerHTML = '<span data-icon="arrowRight"></span> Entrar';
+            Icons.hydrate(btn);
+            return;
+          }
+          UI.toast.success('Bem-vindo(a) de volta, ' + (res.user.displayName || res.user.username) + '!');
+          Notifications.seedDefaults(res.user.id);
+          setTimeout(() => window.location.assign('dashboard.html'), 350);
+        }, 450);
+      });
+    })();
+  </script>
+</body>
+</html>
