@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots — Icon library (inline SVGs)
+   Nexa Serviços — Icon library (inline SVGs)
    Usage:  Icons.render('home', 'icon')
            document.querySelector('[data-icon="home"]').innerHTML = Icons.svg('home')
    ============================================================ */

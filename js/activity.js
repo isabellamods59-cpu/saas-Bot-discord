@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Activity log (thin wrapper sobre DB.activity)
+   Nexa Serviços V2 — Activity log (thin wrapper sobre DB.activity)
    ============================================================ */
 (function (global) {
   'use strict';

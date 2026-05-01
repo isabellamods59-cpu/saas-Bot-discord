@@ -1,5 +1,5 @@
 -- =====================================================================
--- NexaBots V2 — Supabase schema
+-- Nexa Serviços V2 — Supabase schema
 -- =====================================================================
 -- Como aplicar:
 --   1. Crie um projeto em https://supabase.com (free tier basta)
@@ -144,7 +144,7 @@ begin
     new.email,
     coalesce(new.raw_user_meta_data->>'display_name', uname),
     coalesce(new.raw_user_meta_data->>'avatar', 'gradient-1'),
-    case when new.email = 'admin@nexabots.app' then 'admin' else 'user' end
+    case when new.email = 'admin@nexaservicos.app' then 'admin' else 'user' end
   )
   on conflict (id) do nothing;
   return new;

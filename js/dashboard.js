@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Dashboard
+   Nexa Serviços V2 — Dashboard
    ============================================================ */
 (function (global) {
   'use strict';
@@ -13,7 +13,7 @@
       content.innerHTML = `
         <div class="welcome-banner">
           <h2>Olá, <span class="gradient-text">${UI.escapeHtml(user.display_name || user.username)}</span> 👋</h2>
-          <p>Bem-vindo(a) ao painel do NexaBots V2 — gerencie suas compras, ative serviços e descubra novidades no marketplace.</p>
+          <p>Bem-vindo(a) ao painel do Nexa Serviços V2 — gerencie suas compras, ative serviços e descubra novidades no marketplace.</p>
           <div class="actions">
             <a href="store.html" class="btn btn-primary"><span data-icon="store"></span> Ir para o marketplace</a>
             <a href="discord.html" class="btn btn-ghost"><span data-icon="discord"></span> Suporte Discord</a>
@@ -106,7 +106,7 @@
       </div>
       <div class="metric"><div class="ring" style="--metric-color: radial-gradient(circle, rgba(34,197,94,0.4), transparent 70%)"></div>
         <div class="label">Total investido</div><div class="value">${UI.formatBRL(totalSpent)}</div>
-        <div class="delta up">com NexaBots</div>
+        <div class="delta up">com Nexa Serviços</div>
       </div>
     `;
   }

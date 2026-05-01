@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Configuração pública
+   Nexa Serviços V2 — Configuração pública
 
    Edite os valores abaixo com as credenciais do seu projeto Supabase.
    Veja: supabase/README.md para o passo a passo.
@@ -15,14 +15,14 @@ window.NEXA_CONFIG = window.NEXA_CONFIG || {
   SUPABASE_ANON_KEY: '',
 
   /** Email cuja conta nasce automaticamente como admin */
-  ADMIN_EMAIL: 'admin@nexabots.app',
+  ADMIN_EMAIL: 'admin@nexaservicos.app',
 
   /** Convite oficial do Discord (usado em discord.html) */
-  DISCORD_INVITE: 'https://discord.gg/nexabots',
+  DISCORD_INVITE: 'https://discord.gg/FtWhZEyne',
 
   /** Nome / branding */
   BRAND: {
-    name: 'NexaBots',
+    name: 'Nexa Serviços',
     tagline: 'Plataforma premium de bots, cursos e produtos digitais.',
   },
 };

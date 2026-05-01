@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Notifications (thin wrapper sobre DB.notifications)
+   Nexa Serviços V2 — Notifications (thin wrapper sobre DB.notifications)
    ============================================================ */
 (function (global) {
   'use strict';

@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Router / Page guards
+   Nexa Serviços V2 — Router / Page guards
    - Async page guard (espera sessão)
    - Constrói shell (sidebar, topbar, theme)
    - Suporta backend Supabase (live) ou modo demo (LocalStorage)
@@ -45,25 +45,29 @@
         <a href="dashboard.html" class="sidebar-brand">
           <span class="logo">${Icons.svg('bot')}</span>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span class="brand-name">NexaBots</span>
+            <span class="brand-name">Nexa Serviços</span>
             <span class="brand-tag">V2</span>
           </div>
         </a>
         <nav class="sidebar-nav">${groupsHTML}</nav>
         <div class="sidebar-foot">
-          ${UI.renderAvatar(user, 'sm')}
-          <div class="who">
-            <span class="uname">${UI.escapeHtml(userName)}</span>
-            <span class="role">${user && user.role === 'admin' ? 'Administrador' : 'Usuário'}</span>
+          <div class="sidebar-foot-user">
+            ${UI.renderAvatar(user, 'sm')}
+            <div class="who">
+              <span class="uname">${UI.escapeHtml(userName)}</span>
+              <span class="role">${user && user.role === 'admin' ? 'Administrador' : 'Usuário'}</span>
+            </div>
           </div>
-          <button class="btn-icon" data-action="logout" title="Sair" aria-label="Sair">${Icons.svg('logout')}</button>
+          <button class="btn btn-ghost btn-block btn-logout" data-action="logout" title="Sair da conta">
+            ${Icons.svg('logout')} <span>Sair da conta</span>
+          </button>
         </div>
       </aside>
     `;
   }
 
   function buildTopbar(activePage, user, unread = 0) {
-    const breadcrumb = (NAV.flatMap((g) => g.items).find((i) => i.href === activePage) || { label: 'NexaBots' }).label;
+    const breadcrumb = (NAV.flatMap((g) => g.items).find((i) => i.href === activePage) || { label: 'Nexa Serviços' }).label;
     const liveDot = window.Nexa && window.Nexa.isReady()
       ? '<span class="env-pill env-live" title="Conectado ao Supabase"><span class="dot"></span> Live</span>'
       : '<span class="env-pill env-demo" title="Modo demonstração — configure Supabase em js/config.js"><span class="dot"></span> Demo</span>';
@@ -71,7 +75,7 @@
       <header class="topbar">
         <button class="toggle-sidebar" aria-label="Alternar menu" data-action="toggle-sidebar">${Icons.svg('menu')}</button>
         <div class="crumbs">
-          <span>NexaBots</span>
+          <span>Nexa Serviços</span>
           <span class="sep">/</span>
           <span class="current">${UI.escapeHtml(breadcrumb)}</span>
           ${liveDot}

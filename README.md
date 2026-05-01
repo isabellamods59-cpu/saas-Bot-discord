@@ -1,12 +1,12 @@
-# NexaBots — Plataforma SaaS para Bots de Discord
+# Nexa Serviços — Plataforma SaaS para Bots de Discord
 
 > Plataforma premium completa, em **HTML/CSS/JS puro**, para gerenciar e comercializar bots de Discord. Inteiramente em **Português (Brasil)**, com banco de dados em **LocalStorage**, autenticação, dashboard, planos, painel admin e fluxo manual de pagamentos via Discord (sistema de tickets).
 
-![NexaBots](assets/favicon.svg)
+![Nexa Serviços](assets/favicon.svg)
 
 ## Visão geral
 
-NexaBots é uma SPA estática (multi-página) inspirada em SaaS modernos como Discord, Loritta e Stripe. Não usa frameworks, não exige instalação e funciona 100% no navegador.
+Nexa Serviços é uma SPA estática (multi-página) inspirada em SaaS modernos como Discord, Loritta e Stripe. Não usa frameworks, não exige instalação e funciona 100% no navegador.
 
 - Tema escuro com gradientes roxos / accent ciano e rosa
 - Layout responsivo (mobile + desktop)

@@ -1,5 +1,5 @@
 /* ============================================================
-   NexaBots V2 — Marketplace (5 categorias)
+   Nexa Serviços V2 — Marketplace (5 categorias)
    - Filtros por categoria, busca, ordenação
    - Compra real (cria registro em DB.purchases)
    ============================================================ */
@@ -23,7 +23,7 @@
       content.innerHTML = `
         <div class="page-head">
           <div>
-            <h1 class="page-title">Marketplace NexaBots</h1>
+            <h1 class="page-title">Marketplace Nexa Serviços</h1>
             <p class="page-sub">Bots, cursos, jogos, Nitro e lojas prontas — tudo em um só lugar. Pagamento manual via Discord.</p>
           </div>
           <div class="page-actions">
@@ -199,18 +199,22 @@
             ${features.length ? `<ul class="feat-list">${features.map((f) => `<li>${Icons.svg('check')} ${UI.escapeHtml(f)}</li>`).join('')}</ul>` : ''}
             <div class="price-block">
               <div class="price">${UI.formatBRL(product.price)}<small> ${product.period ? '/ ' + product.period : ''}</small></div>
-              <p class="muted" style="font-size:12px;">Pagamento manual via ticket no Discord. A liberação é feita pelo time NexaBots.</p>
+              <p class="muted" style="font-size:12px;">Pagamento manual via ticket no Discord. A liberação é feita pelo time Nexa Serviços.</p>
             </div>
           </div>
         </div>
       `,
       footer: `
         <button class="btn btn-ghost" data-close>Fechar</button>
-        <button class="btn btn-primary" id="confirm-buy">${Icons.svg('shoppingBag')} Confirmar pedido</button>
+        <button class="btn btn-primary" id="confirm-buy">${Icons.svg('shoppingBag')} Comprar e abrir ticket</button>
       `,
     });
     Icons.hydrate(document.body);
     document.querySelector('#confirm-buy')?.addEventListener('click', () => createOrder(product));
+  }
+
+  function discordInviteUrl() {
+    return (window.NEXA_CONFIG && window.NEXA_CONFIG.DISCORD_INVITE) || 'https://discord.gg/FtWhZEyne';
   }
 
   // Listen on grid for "Comprar" button shortcut
@@ -228,6 +232,8 @@
     if (!user) { UI.toast.error('Faça login para comprar.'); return; }
     const btn = document.querySelector('#confirm-buy');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Criando pedido...'; }
+    // Open Discord ticket page IMMEDIATELY (sync click) so popup blockers don't interfere
+    const discordWin = window.open(discordInviteUrl(), '_blank', 'noopener,noreferrer');
     try {
       const purchase = await DB.purchases.create({
         userId: user.id,
@@ -244,15 +250,19 @@
         title: 'Pedido criado',
         message: `Seu pedido para ${product.name} está pendente. Abra um ticket no Discord para liberar.`,
       });
-      UI.toast.success(`Pedido para ${product.name} criado! Status: pendente.`);
+      UI.toast.success(`Pedido criado! Abra um ticket no Discord para liberar.`);
       // close modal
       const overlay = document.querySelector('.modal-overlay');
       overlay?.click();
-      setTimeout(() => location.assign('purchases.html'), 600);
+      // If popup was blocked, fallback to same-tab navigation after redirect
+      if (!discordWin) {
+        UI.toast.warn('Abra o Discord manualmente: ' + discordInviteUrl());
+      }
+      setTimeout(() => location.assign('purchases.html'), 700);
     } catch (err) {
       console.error('[Marketplace] erro ao criar pedido:', err);
       UI.toast.error(err?.message || 'Não foi possível criar o pedido.');
-      if (btn) { btn.disabled = false; btn.innerHTML = `${Icons.svg('shoppingBag')} Confirmar pedido`; Icons.hydrate(btn); }
+      if (btn) { btn.disabled = false; btn.innerHTML = `${Icons.svg('shoppingBag')} Comprar e abrir ticket`; Icons.hydrate(btn); }
     }
   }
 

@@ -1,12 +1,12 @@
-# Supabase setup — NexaBots V2
+# Supabase setup — Nexa Serviços V2
 
-Tudo que você precisa pra conectar a NexaBots ao Supabase.
+Tudo que você precisa pra conectar a Nexa Serviços ao Supabase.
 
 ## 1. Crie um projeto Supabase
 
 1. Vá em https://supabase.com → **Sign in** com Google/GitHub.
 2. **New project** → escolha:
-   - Nome: `nexabots` (ou qualquer)
+   - Nome: `nexa-servicos` (ou qualquer)
    - Senha do banco: gere uma forte (você não vai usar diretamente)
    - Região: `South America (São Paulo)` (mais próximo do Brasil)
    - Plano: **Free** já é suficiente.
@@ -34,10 +34,10 @@ Tudo que você precisa pra conectar a NexaBots ao Supabase.
 
 ## 5. (Opcional) Crie o admin
 
-Por padrão o sistema marca como admin qualquer usuário com email `admin@nexabots.app`. Você tem duas opções:
+Por padrão o sistema marca como admin qualquer usuário com email `admin@nexaservicos.app`. Você tem duas opções:
 
 ### Opção A — registre normalmente
-- Acesse `register.html` e cadastre uma conta com email `admin@nexabots.app` (qualquer username/senha de 6+ caracteres).
+- Acesse `register.html` e cadastre uma conta com email `admin@nexaservicos.app` (qualquer username/senha de 6+ caracteres).
 - Pronto: o trigger `handle_new_user` já vai marcar como admin.
 
 ### Opção B — promova um usuário existente
