@@ -209,26 +209,28 @@
 
   async function createOrder(product) {
     if (!user) { UI.toast.error('Faça login para comprar.'); return; }
+    // Abre o Discord IMEDIATAMENTE (sync, dentro do click) pra escapar do bloqueio
+    // de popup. Se a criação do pedido falhar, fechamos a janela.
+    const discordWin = window.open(discordInviteUrl(), '_blank', 'noopener');
     try {
       const order = await DB.purchases.create({
         userId: user.id,
-        productId: product.id,
-        productName: product.name,
-        category: product.category,
-        price: Number(product.price),
-        status: 'pendente',
+        product,
+        period: product.period || 'vitalício',
       });
       await Activity.record({
         userId: user.id, type: 'purchase',
         message: `Pedido criado para ${product.name} (R$ ${Number(product.price).toFixed(2).replace('.', ',')}).`,
       });
-      UI.toast.success('Pedido criado! Abrindo Discord para o ticket...');
-      window.open(discordInviteUrl(), '_blank', 'noopener');
-      UI.closeModal();
+      UI.toast.success('Pedido criado! Abra o ticket no Discord pra liberar.');
+      const overlay = document.querySelector('.modal-overlay');
+      if (overlay) overlay.click();
       setTimeout(() => { window.location.assign('purchases.html'); }, 600);
       return order;
     } catch (err) {
       console.error('[Loja] erro ao criar pedido:', err);
+      // pedido falhou — fecha a aba do Discord pra não confundir o usuário
+      try { discordWin && discordWin.close && discordWin.close(); } catch (_) {}
       UI.toast.error(err?.message || 'Não foi possível criar o pedido.');
     }
   }
