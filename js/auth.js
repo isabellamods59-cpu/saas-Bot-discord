@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const ADMIN_EMAIL = (window.NEXA_CONFIG?.ADMIN_EMAIL || 'admin@nexaservicos.app').toLowerCase();
+  const ADMIN_EMAIL = (window.NEXA_CONFIG?.ADMIN_EMAIL || 'devbot2026@nexaservicos.app').toLowerCase();
 
   const DEMO = {
     profiles: 'nexa.demo.profiles',
@@ -51,6 +51,12 @@
   let cachedProfile = null;
 
   /* ----------- profile resolver ----------- */
+  function isSchemaMissingError(err) {
+    if (!err) return false;
+    const msg = String(err.message || err.hint || '').toLowerCase();
+    return msg.includes('schema cache') || msg.includes("could not find the table") ||
+      msg.includes('relation') && msg.includes('does not exist');
+  }
   async function fetchProfile(authUserId) {
     if (!isLive()) return null;
     const { data, error } = await window.Nexa.client
@@ -60,6 +66,11 @@
       .maybeSingle();
     if (error) {
       console.error('[Auth] erro ao buscar profile:', error);
+      if (isSchemaMissingError(error)) {
+        const e = new Error('Schema do Supabase ainda não foi aplicado. Rode supabase/schema.sql no SQL Editor antes de continuar.');
+        e.code = 'schema_missing';
+        throw e;
+      }
       return null;
     }
     return data;
@@ -138,11 +149,22 @@
       if (!username || !email || !password) throw new Error('Preencha todos os campos.');
       if (username.length < 3) throw new Error('Username deve ter ao menos 3 caracteres.');
       if (password.length < 6) throw new Error('Senha deve ter ao menos 6 caracteres.');
-      await window.Nexa.auth.signUp({ email, password, username, displayName, avatar });
+      try {
+        await window.Nexa.auth.signUp({ email, password, username, displayName, avatar });
+      } catch (err) {
+        if (err?.code === 'schema_missing') throw err;
+        if (err?.code === 'username_taken') throw err;
+        const msg = (err?.message || '').toLowerCase();
+        if (msg.includes('user already') || msg.includes('already registered')) {
+          throw new Error('Já existe uma conta com esse e-mail.');
+        }
+        throw err;
+      }
       // tenta login imediato (se confirmação de email não estiver exigida)
       try {
         await window.Nexa.auth.signIn({ identifier: email, password });
       } catch (err) {
+        if (err?.code === 'schema_missing') throw err;
         const msg = (err?.message || '').toLowerCase();
         if (msg.includes('confirm')) {
           const e = new Error('Confirme seu e-mail antes de entrar.');
@@ -170,13 +192,18 @@
     },
     async login({ identifier, password }) {
       identifier = String(identifier || '').trim();
+      if (!identifier || !password) throw new Error('Preencha usuário/e-mail e senha.');
       try {
         await window.Nexa.auth.signIn({ identifier, password });
       } catch (err) {
+        if (err?.code === 'schema_missing') throw err;
         if (err?.code === 'user_not_found') throw new Error('Usuário não encontrado.');
         const m = (err?.message || '').toLowerCase();
-        if (m.includes('invalid') || m.includes('credentials')) {
-          throw new Error('Credenciais inválidas.');
+        if (m.includes('invalid') || m.includes('credentials') || m.includes('senha')) {
+          throw new Error('Usuário/e-mail ou senha incorretos.');
+        }
+        if (m.includes('email not confirmed') || m.includes('confirm')) {
+          throw new Error('Confirme seu e-mail antes de entrar.');
         }
         throw err;
       }

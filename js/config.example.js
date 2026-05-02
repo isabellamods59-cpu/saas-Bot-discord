@@ -15,7 +15,7 @@ window.NEXA_CONFIG = window.NEXA_CONFIG || {
   SUPABASE_ANON_KEY: '',
 
   /** Email cuja conta nasce automaticamente como admin */
-  ADMIN_EMAIL: 'admin@nexaservicos.app',
+  ADMIN_EMAIL: 'devbot2026@nexaservicos.app',
 
   /** Convite oficial do Discord (usado em discord.html) */
   DISCORD_INVITE: 'https://discord.gg/FtWhZEyne',
@@ -23,6 +23,6 @@ window.NEXA_CONFIG = window.NEXA_CONFIG || {
   /** Nome / branding */
   BRAND: {
     name: 'Nexa Serviços',
-    tagline: 'Plataforma premium de bots, cursos e produtos digitais.',
+    tagline: 'Bots Discord premium — pagamento manual via tickets.',
   },
 };

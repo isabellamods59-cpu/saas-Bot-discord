@@ -47,13 +47,31 @@
   }
 
   /* -------------------- AUTH WRAPPER -------------------- */
+  function isSchemaMissing(err) {
+    if (!err) return false;
+    const msg = String(err.message || err.hint || '').toLowerCase();
+    return msg.includes('schema cache') ||
+      msg.includes('could not find the table') ||
+      (msg.includes('relation') && msg.includes('does not exist')) ||
+      msg.includes('function username_available');
+  }
+  function wrapSchemaError(err) {
+    const e = new Error('Schema do Supabase não foi aplicado. Acesse Supabase Dashboard → SQL Editor → rode supabase/schema.sql, depois supabase/seed.sql.');
+    e.code = 'schema_missing';
+    e.original = err;
+    return e;
+  }
+
   const auth = {
     async signUp({ email, password, username, displayName, avatar }) {
-      if (!ready) throw new Error('Supabase não configurado.');
+      if (!ready) throw new Error('Supabase não configurado em js/config.js.');
       // 1) checa se username está disponível
       const { data: avail, error: rpcErr } = await client
         .rpc('username_available', { p_username: username });
-      if (rpcErr) throw rpcErr;
+      if (rpcErr) {
+        if (isSchemaMissing(rpcErr)) throw wrapSchemaError(rpcErr);
+        throw rpcErr;
+      }
       if (avail === false) {
         const e = new Error('Esse nome de usuário já está em uso.');
         e.code = 'username_taken';
@@ -75,7 +93,7 @@
     },
 
     async signIn({ identifier, password }) {
-      if (!ready) throw new Error('Supabase não configurado.');
+      if (!ready) throw new Error('Supabase não configurado em js/config.js.');
       // identifier pode ser email ou username
       let email = identifier;
       if (!identifier.includes('@')) {
@@ -85,7 +103,10 @@
           .select('email')
           .ilike('username', identifier)
           .maybeSingle();
-        if (error) throw error;
+        if (error) {
+          if (isSchemaMissing(error)) throw wrapSchemaError(error);
+          throw error;
+        }
         if (!data) {
           const e = new Error('Usuário não encontrado.');
           e.code = 'user_not_found';

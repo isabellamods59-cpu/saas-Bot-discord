@@ -2,7 +2,7 @@
    Nexa Serviços V2 — Router / Page guards
    - Async page guard (espera sessão)
    - Constrói shell (sidebar, topbar, theme)
-   - Suporta backend Supabase (live) ou modo demo (LocalStorage)
+   - Suporta backend Supabase (live) ou modo preview (LocalStorage)
    ============================================================ */
 (function (global) {
   'use strict';
@@ -10,7 +10,7 @@
   const NAV = [
     { group: 'Principal', items: [
       { href: 'dashboard.html',  label: 'Dashboard',       icon: 'dashboard' },
-      { href: 'store.html',      label: 'Marketplace',     icon: 'store' },
+      { href: 'store.html',      label: 'Loja',            icon: 'store' },
       { href: 'purchases.html',  label: 'Minhas compras',  icon: 'purchases' },
     ]},
     { group: 'Conta', items: [
@@ -46,7 +46,6 @@
           <span class="logo">${Icons.svg('bot')}</span>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="brand-name">Nexa Serviços</span>
-            <span class="brand-tag">V2</span>
           </div>
         </a>
         <nav class="sidebar-nav">${groupsHTML}</nav>
@@ -68,9 +67,11 @@
 
   function buildTopbar(activePage, user, unread = 0) {
     const breadcrumb = (NAV.flatMap((g) => g.items).find((i) => i.href === activePage) || { label: 'Nexa Serviços' }).label;
-    const liveDot = window.Nexa && window.Nexa.isReady()
-      ? '<span class="env-pill env-live" title="Conectado ao Supabase"><span class="dot"></span> Live</span>'
-      : '<span class="env-pill env-demo" title="Modo demonstração — configure Supabase em js/config.js"><span class="dot"></span> Demo</span>';
+    // Em produção (Supabase) o badge é discreto; em modo preview avisamos o operador.
+    const isLive = !!(window.Nexa && window.Nexa.isReady());
+    const envPill = isLive
+      ? ''
+      : '<span class="env-pill env-preview" title="Modo preview — configure Supabase em js/config.js para usar dados reais"><span class="dot"></span> Preview</span>';
     return `
       <header class="topbar">
         <button class="toggle-sidebar" aria-label="Alternar menu" data-action="toggle-sidebar">${Icons.svg('menu')}</button>
@@ -78,7 +79,7 @@
           <span>Nexa Serviços</span>
           <span class="sep">/</span>
           <span class="current">${UI.escapeHtml(breadcrumb)}</span>
-          ${liveDot}
+          ${envPill}
         </div>
         <div class="topbar-search">
           ${Icons.svg('search')}
