@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Nexa Serviços — Plataforma premium de bots, cursos e produtos digitais para Discord." />
+  <meta name="description" content="Nexa Serviços — Bots Discord premium com pagamento manual via ticket. Tickets, Suporte, Moderação e VIP." />
   <meta name="theme-color" content="#7c3aed" />
   <title>Entrar — Nexa Serviços</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,40 +20,40 @@
       <div class="auth-brand">
         <span class="logo" data-icon="bot"></span>
         <span class="brand-name">Nexa Serviços</span>
-        <span class="brand-tag" style="font-size:10px;font-weight:700;padding:2px 8px;background:rgba(124,58,237,0.18);color:#c4b5fd;border-radius:999px;letter-spacing:.08em;text-transform:uppercase;">V2</span>
+        
       </div>
 
       <div class="auth-hero">
-        <h1>Mais que bots — uma <span class="gradient-text">plataforma completa.</span></h1>
-        <p>Bem-vindo(a) ao Nexa Serviços V2 — bots Discord, cursos, jogos, Nitro e lojas prontas, em um único marketplace. Pagamento manual via tickets no Discord.</p>
+        <h1>Bots Discord premium <span class="gradient-text">prontos pro seu servidor.</span></h1>
+        <p>Quatro bots profissionais (Ticket, Suporte, Moderação e VIP) — com painel web, atualizações vitalícias e pagamento manual por ticket no Discord. Suporte humano de verdade.</p>
 
         <div class="auth-features">
           <div class="auth-feature">
-            <span class="check" data-icon="bot"></span>
+            <span class="check" data-icon="tag"></span>
             <div>
-              <div class="feat-title">Bots premium</div>
-              <div class="feat-desc">Música, moderação, tickets, levels, economia.</div>
+              <div class="feat-title">Bot Ticket — R$ 8,99</div>
+              <div class="feat-desc">Tickets multi-categoria com transcrições em HTML.</div>
             </div>
           </div>
           <div class="auth-feature">
-            <span class="check" data-icon="book"></span>
+            <span class="check" data-icon="help"></span>
             <div>
-              <div class="feat-title">Cursos exclusivos</div>
-              <div class="feat-desc">Aprenda a criar bots, comunidades e SaaS.</div>
+              <div class="feat-title">Bot Suporte — R$ 11,50</div>
+              <div class="feat-desc">FAQ inteligente + atendimento automático 24/7.</div>
             </div>
           </div>
           <div class="auth-feature">
-            <span class="check" data-icon="sparkle"></span>
+            <span class="check" data-icon="shield"></span>
             <div>
-              <div class="feat-title">Discord Nitro & Jogos</div>
-              <div class="feat-desc">Itens digitais com entrega manual rápida.</div>
+              <div class="feat-title">Bot Moderação — R$ 13,50</div>
+              <div class="feat-desc">Anti-raid, AutoMod, captcha e logs de auditoria.</div>
             </div>
           </div>
           <div class="auth-feature">
-            <span class="check" data-icon="headset"></span>
+            <span class="check" data-icon="crown"></span>
             <div>
-              <div class="feat-title">Suporte 24/7 via Discord</div>
-              <div class="feat-desc">Time dedicado pronto para te atender.</div>
+              <div class="feat-title">Bot VIP — R$ 22,50</div>
+              <div class="feat-desc">All-in-one: tickets + moderação + economia + level + welcome.</div>
             </div>
           </div>
         </div>
@@ -116,11 +116,11 @@
           Ainda não tem uma conta? <a href="register.html">Criar conta gratuita</a>
         </p>
 
-        <div class="alert info" style="margin-top:24px;" id="demo-hint">
+        <div class="alert info" style="margin-top:24px;display:none;" id="preview-hint">
           <span data-icon="info"></span>
           <div>
-            <div class="alert-title">Conta de demonstração</div>
-            <div class="alert-body">Em modo demo, use <code class="code">admin</code> / <code class="code">admin123</code> para entrar como administrador.</div>
+            <div class="alert-title">Modo preview</div>
+            <div class="alert-body">Configure <code class="code">js/config.js</code> com sua URL e chave anon do Supabase para usar dados reais. Em preview, contas e pedidos ficam só no seu navegador.</div>
           </div>
         </div>
       </div>
@@ -148,13 +148,10 @@
         return;
       }
 
-      // Atualiza o hint de demo se está em modo Live (Supabase)
-      if (window.Nexa?.isReady()) {
-        const hint = document.getElementById('demo-hint');
-        if (hint) {
-          hint.querySelector('.alert-title').textContent = 'Conta admin';
-          hint.querySelector('.alert-body').innerHTML = 'Cadastre-se com o e-mail <code class="code">admin@nexaservicos.app</code> para receber permissão de administrador automaticamente.';
-        }
+      // Mostra o aviso de preview só quando o Supabase NÃO estiver configurado.
+      if (!(window.Nexa && window.Nexa.isReady())) {
+        const hint = document.getElementById('preview-hint');
+        if (hint) hint.style.display = '';
       }
 
       const form = document.getElementById('login-form');

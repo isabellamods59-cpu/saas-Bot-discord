@@ -41,10 +41,6 @@
               <option value="entregue">Entregue</option>
               <option value="cancelado">Cancelado</option>
             </select>
-            <select class="input" id="p-cat">
-              <option value="todos">Todas as categorias</option>
-              ${DB.CATEGORIES.map((c) => `<option value="${c}">${UI.CATEGORY_META[c].label}</option>`).join('')}
-            </select>
           </div>
         </div>
 
@@ -54,7 +50,6 @@
 
       content.querySelector('#p-search').addEventListener('input', UI.debounce((e) => { search = e.target.value.trim().toLowerCase(); render(content); }, 200));
       content.querySelector('#p-status').addEventListener('change', (e) => { filterStatus = e.target.value; render(content); });
-      content.querySelector('#p-cat').addEventListener('change', (e) => { filterCategory = e.target.value; render(content); });
 
       try {
         purchases = await DB.purchases.byUser(user.id);

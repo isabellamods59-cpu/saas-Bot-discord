@@ -1,13 +1,10 @@
 /* ============================================================
-   Nexa Serviços V2 — Marketplace (5 categorias)
-   - Filtros por categoria, busca, ordenação
-   - Compra real (cria registro em DB.purchases)
+   Nexa Serviços — Loja de bots (single category)
    ============================================================ */
 (function (global) {
   'use strict';
 
   let allProducts = [];
-  let currentCategory = 'todos';
   let currentSearch = '';
   let currentSort = 'relevance';
   let user = null;
@@ -17,39 +14,42 @@
       if (!ctx) return;
       user = ctx.user;
       const { content } = ctx;
-      currentCategory = (UI.qs('category') || 'todos').toLowerCase();
       const focusProduct = UI.qs('product');
 
       content.innerHTML = `
-        <div class="page-head">
-          <div>
-            <h1 class="page-title">Marketplace Nexa Serviços</h1>
-            <p class="page-sub">Bots, cursos, jogos, Nitro e lojas prontas — tudo em um só lugar. Pagamento manual via Discord.</p>
+        <div class="store-hero">
+          <div class="store-hero-text">
+            <span class="eyebrow">${Icons.svg('bot')} Bots Discord premium</span>
+            <h1 class="page-title">Bots prontos para o seu servidor.</h1>
+            <p class="page-sub">Quatro bots premium, configurados, com painel web, suporte humano e atualizações vitalícias. Pagamento manual via ticket no Discord — liberação rápida e segura.</p>
+            <div class="hero-cta">
+              <a class="btn btn-primary" href="discord.html">${Icons.svg('discord')} Falar no Discord</a>
+              <a class="btn btn-ghost" href="purchases.html">${Icons.svg('purchases')} Minhas compras</a>
+            </div>
+            <div class="hero-trust">
+              <span class="dot dot-green"></span>
+              <span>Suporte 24/7 no Discord · Pagamento manual com ticket · Garantia de reposição</span>
+            </div>
           </div>
-          <div class="page-actions">
-            <a class="btn btn-ghost" href="discord.html">${Icons.svg('discord')} Suporte / Tickets</a>
-          </div>
+          <div class="store-hero-art" aria-hidden="true">${heroArtSVG()}</div>
         </div>
-
-        <div class="cat-strip" id="cat-strip"></div>
 
         <div class="toolbar mb-4">
           <div class="search-field">
             ${Icons.svg('search')}
-            <input class="input" id="search" type="search" placeholder="Buscar por nome ou descrição..." />
+            <input class="input" id="search" type="search" placeholder="Buscar por nome ou recurso..." />
           </div>
           <div class="filters">
             <select class="input" id="sort" style="min-width:180px">
               <option value="relevance">Mais relevantes</option>
               <option value="price-asc">Menor preço</option>
               <option value="price-desc">Maior preço</option>
-              <option value="newest">Mais recentes</option>
             </select>
           </div>
         </div>
 
         <div class="product-grid" id="product-grid">
-          ${UI.skeleton(8, 'card')}
+          ${UI.skeleton(4, 'card')}
         </div>
       `;
       Icons.hydrate(content);
@@ -66,11 +66,10 @@
       try {
         allProducts = await DB.products.all();
       } catch (err) {
-        console.error('[Marketplace] erro ao buscar produtos:', err);
+        console.error('[Loja] erro ao buscar produtos:', err);
         allProducts = [];
         UI.toast.error('Não foi possível carregar os produtos.');
       }
-      renderCategoryStrip(content);
       render(content);
 
       if (focusProduct) {
@@ -80,58 +79,43 @@
     },
   };
 
-  function renderCategoryStrip(content) {
-    const cats = ['todos', ...DB.CATEGORIES];
-    const stripEl = content.querySelector('#cat-strip');
-    const counts = {};
-    DB.CATEGORIES.forEach((c) => { counts[c] = allProducts.filter((p) => p.category === c).length; });
-    counts.todos = allProducts.length;
-
-    stripEl.innerHTML = cats.map((c) => {
-      const meta = c === 'todos'
-        ? { label: 'Todos', emoji: '✨', color: 'rgba(124,58,237,0.35)' }
-        : { ...UI.CATEGORY_META[c], color: UI.CATEGORY_META[c].color };
-      const isActive = c === currentCategory;
-      const colorRgba = (() => {
-        const m = { bots: 'rgba(124,58,237,', cursos: 'rgba(34,211,238,', jogos: 'rgba(34,197,94,', nitro: 'rgba(251,191,36,', lojas: 'rgba(244,114,182,', todos: 'rgba(124,58,237,' }[c];
-        return m;
-      })();
-      return `
-        <button class="cat-card ${isActive ? 'active' : ''}" data-cat="${c}"
-          style="--cat-color: ${colorRgba}0.4); --cat-shadow: ${colorRgba}0.5);">
-          <span class="emoji">${meta.emoji || '🎯'}</span>
-          <span class="ttl">${UI.escapeHtml(meta.label || c)}</span>
-          <span class="sub">${counts[c] || 0} produtos</span>
-        </button>
-      `;
-    }).join('');
-    stripEl.querySelectorAll('[data-cat]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        currentCategory = btn.dataset.cat;
-        const url = new URL(location.href);
-        if (currentCategory === 'todos') url.searchParams.delete('category');
-        else url.searchParams.set('category', currentCategory);
-        history.replaceState(null, '', url);
-        renderCategoryStrip(content);
-        render(content);
-      });
-    });
+  function heroArtSVG() {
+    return `
+      <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+        <defs>
+          <linearGradient id="hg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#7c3aed"/>
+            <stop offset="100%" stop-color="#22d3ee"/>
+          </linearGradient>
+          <linearGradient id="hg2" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#a855f7" stop-opacity=".25"/>
+            <stop offset="100%" stop-color="#22d3ee" stop-opacity=".05"/>
+          </linearGradient>
+        </defs>
+        <rect x="40" y="20" width="240" height="180" rx="20" fill="url(#hg2)" stroke="rgba(255,255,255,0.08)"/>
+        <circle cx="160" cy="90" r="42" fill="url(#hg)"/>
+        <rect x="148" y="80" width="6" height="20" rx="2" fill="#0f0f12"/>
+        <rect x="166" y="80" width="6" height="20" rx="2" fill="#0f0f12"/>
+        <path d="M148 110 q12 8 24 0" stroke="#0f0f12" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <rect x="60" y="150" width="60" height="34" rx="10" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)"/>
+        <rect x="130" y="150" width="60" height="34" rx="10" fill="rgba(124,58,237,0.18)" stroke="rgba(124,58,237,0.4)"/>
+        <rect x="200" y="150" width="60" height="34" rx="10" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.08)"/>
+        <circle cx="90"  cy="167" r="5" fill="#7c3aed"/>
+        <circle cx="160" cy="167" r="5" fill="#22d3ee"/>
+        <circle cx="230" cy="167" r="5" fill="#f472b6"/>
+      </svg>`;
   }
 
   function applyFilters() {
     let list = [...allProducts].filter((p) => p.active !== false);
-    if (currentCategory !== 'todos') {
-      list = list.filter((p) => p.category === currentCategory);
-    }
     if (currentSearch) {
       list = list.filter((p) =>
-        (p.name + ' ' + (p.description || '') + ' ' + (p.short_description || ''))
+        (p.name + ' ' + (p.description || '') + ' ' + (p.short_description || '') + ' ' + (p.features || []).join(' '))
           .toLowerCase().includes(currentSearch)
       );
     }
     if (currentSort === 'price-asc') list.sort((a, b) => Number(a.price) - Number(b.price));
     else if (currentSort === 'price-desc') list.sort((a, b) => Number(b.price) - Number(a.price));
-    else if (currentSort === 'newest') list.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     else list.sort((a, b) => Number(!!b.recommended) - Number(!!a.recommended));
     return list;
   }
@@ -144,7 +128,7 @@
         <div class="empty-state" style="grid-column:1/-1;padding:48px;">
           ${Icons.svg('compass')}
           <h3 style="font-size:18px;">Nenhum produto encontrado</h3>
-          <p>Tente outra categoria ou busca.</p>
+          <p>Tente outra busca.</p>
         </div>`;
       Icons.hydrate(grid);
       return;
@@ -160,21 +144,19 @@
   }
 
   function renderCard(p) {
-    const features = Array.isArray(p.features) ? p.features.slice(0, 3) : [];
-    const cat = UI.CATEGORY_META[p.category] || { label: p.category, emoji: '🎯' };
+    const features = Array.isArray(p.features) ? p.features.slice(0, 4) : [];
     return `
       <article class="product-card ${p.recommended ? 'recommended' : ''}" data-product-id="${UI.escapeHtml(p.id)}">
         <div class="thumb">
           ${p.image ? `<img src="${UI.escapeHtml(p.image)}" alt="${UI.escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover">` : Icons.svg(p.icon || 'bot')}
           ${p.badge ? `<span class="badge ${p.recommended ? 'badge-soft' : 'badge-info'}" style="position:absolute;top:12px;left:12px;">${UI.escapeHtml(p.badge)}</span>` : ''}
-          <span class="badge badge-soft" style="position:absolute;top:12px;right:12px;">${cat.emoji} ${UI.escapeHtml(cat.label)}</span>
         </div>
         <div class="body">
           <div class="name">${UI.escapeHtml(p.name)}</div>
           <div class="desc">${UI.escapeHtml(p.short_description || p.description || '')}</div>
-          ${features.length ? `<div class="feat">${features.map((f) => `<span class="tag">${UI.escapeHtml(f)}</span>`).join('')}</div>` : ''}
+          ${features.length ? `<ul class="card-feat">${features.map((f) => `<li>${Icons.svg('check')} <span>${UI.escapeHtml(f)}</span></li>`).join('')}</ul>` : ''}
           <div class="footrow">
-            <div class="price">${UI.formatBRL(p.price)}<small> ${p.period ? '/ ' + p.period : ''}</small></div>
+            <div class="price">${UI.formatBRL(p.price)}<small> /vitalício</small></div>
             <button class="btn btn-primary btn-sm" data-buy>${Icons.svg('shoppingBag')} Comprar</button>
           </div>
         </div>
@@ -184,7 +166,6 @@
 
   function openProductModal(product) {
     const features = Array.isArray(product.features) ? product.features : [];
-    const cat = UI.CATEGORY_META[product.category] || { label: product.category, emoji: '🎯' };
     UI.openModal({
       title: product.name,
       size: 'lg',
@@ -194,12 +175,11 @@
             ${product.image ? `<img src="${UI.escapeHtml(product.image)}" alt="${UI.escapeHtml(product.name)}">` : Icons.svg(product.icon || 'bot')}
           </div>
           <div>
-            <div class="badge badge-soft" style="margin-bottom:8px;">${cat.emoji} ${UI.escapeHtml(cat.label)}</div>
             <p style="color:var(--text-2);">${UI.escapeHtml(product.description || product.short_description || '')}</p>
             ${features.length ? `<ul class="feat-list">${features.map((f) => `<li>${Icons.svg('check')} ${UI.escapeHtml(f)}</li>`).join('')}</ul>` : ''}
             <div class="price-block">
-              <div class="price">${UI.formatBRL(product.price)}<small> ${product.period ? '/ ' + product.period : ''}</small></div>
-              <p class="muted" style="font-size:12px;">Pagamento manual via ticket no Discord. A liberação é feita pelo time Nexa Serviços.</p>
+              <div class="price">${UI.formatBRL(product.price)}<small> /vitalício</small></div>
+              <p class="muted" style="font-size:12px;">Pagamento manual via ticket no Discord. A liberação é feita pelo time Nexa Serviços em até 30 minutos após a confirmação.</p>
             </div>
           </div>
         </div>
@@ -217,7 +197,6 @@
     return (window.NEXA_CONFIG && window.NEXA_CONFIG.DISCORD_INVITE) || 'https://discord.gg/FtWhZEyne';
   }
 
-  // Listen on grid for "Comprar" button shortcut
   document.addEventListener('click', (e) => {
     const buyBtn = e.target.closest('[data-buy]');
     if (!buyBtn) return;
@@ -230,39 +209,27 @@
 
   async function createOrder(product) {
     if (!user) { UI.toast.error('Faça login para comprar.'); return; }
-    const btn = document.querySelector('#confirm-buy');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Criando pedido...'; }
-    // Open Discord ticket page IMMEDIATELY (sync click) so popup blockers don't interfere
-    const discordWin = window.open(discordInviteUrl(), '_blank', 'noopener,noreferrer');
     try {
-      const purchase = await DB.purchases.create({
+      const order = await DB.purchases.create({
         userId: user.id,
-        product,
-        period: product.period,
+        productId: product.id,
+        productName: product.name,
+        category: product.category,
+        price: Number(product.price),
+        status: 'pendente',
       });
       await Activity.record({
-        userId: user.id, type: 'purchase_created',
-        message: `Pedido criado para ${product.name}.`,
-        data: { purchase_id: purchase.id, product_id: product.id, price: product.price },
+        userId: user.id, type: 'purchase',
+        message: `Pedido criado para ${product.name} (R$ ${Number(product.price).toFixed(2).replace('.', ',')}).`,
       });
-      await Notifications.push({
-        userId: user.id, type: 'success',
-        title: 'Pedido criado',
-        message: `Seu pedido para ${product.name} está pendente. Abra um ticket no Discord para liberar.`,
-      });
-      UI.toast.success(`Pedido criado! Abra um ticket no Discord para liberar.`);
-      // close modal
-      const overlay = document.querySelector('.modal-overlay');
-      overlay?.click();
-      // If popup was blocked, fallback to same-tab navigation after redirect
-      if (!discordWin) {
-        UI.toast.warn('Abra o Discord manualmente: ' + discordInviteUrl());
-      }
-      setTimeout(() => location.assign('purchases.html'), 700);
+      UI.toast.success('Pedido criado! Abrindo Discord para o ticket...');
+      window.open(discordInviteUrl(), '_blank', 'noopener');
+      UI.closeModal();
+      setTimeout(() => { window.location.assign('purchases.html'); }, 600);
+      return order;
     } catch (err) {
-      console.error('[Marketplace] erro ao criar pedido:', err);
+      console.error('[Loja] erro ao criar pedido:', err);
       UI.toast.error(err?.message || 'Não foi possível criar o pedido.');
-      if (btn) { btn.disabled = false; btn.innerHTML = `${Icons.svg('shoppingBag')} Comprar e abrir ticket`; Icons.hydrate(btn); }
     }
   }
 

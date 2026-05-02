@@ -52,7 +52,7 @@
           </details>
           <details class="faq">
             <summary>Quanto tempo demora a liberação?</summary>
-            <p>Após confirmação do pagamento, a maioria dos pedidos é entregue em até 30 minutos. Bots e cursos podem ser ativados na hora.</p>
+            <p>Após confirmação do pagamento, a maioria dos pedidos é entregue em até 30 minutos. Bots prontos são entregues e configurados na hora.</p>
           </details>
           <details class="faq">
             <summary>Posso pedir reembolso?</summary>

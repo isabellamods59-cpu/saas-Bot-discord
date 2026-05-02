@@ -213,11 +213,7 @@
 
   /* ---------- Categories metadata ---------- */
   const CATEGORY_META = {
-    bots:   { label: 'Bots Discord', icon: 'bot',      color: '#7c3aed', emoji: '🤖' },
-    cursos: { label: 'Cursos',       icon: 'book',     color: '#22d3ee', emoji: '🎓' },
-    jogos:  { label: 'Jogos',        icon: 'gamepad',  color: '#22c55e', emoji: '🎮' },
-    nitro:  { label: 'Discord Nitro',icon: 'sparkle',  color: '#fbbf24', emoji: '💎' },
-    lojas:  { label: 'Lojas Prontas',icon: 'store',    color: '#f472b6', emoji: '🛍️' },
+    bots: { label: 'Bots Discord', icon: 'bot', color: '#7c3aed', emoji: '🤖' },
   };
   const STATUS_META = {
     pendente:  { label: 'Pendente',  className: 'badge-warning' },

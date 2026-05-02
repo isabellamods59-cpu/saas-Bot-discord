@@ -30,13 +30,13 @@ create index if not exists profiles_username_lower_idx on public.profiles (lower
 create index if not exists profiles_role_idx on public.profiles (role);
 
 -- =====================================================================
--- PRODUCTS — catálogo unificado (bots, cursos, jogos, nitro, lojas)
+-- PRODUCTS — catálogo de bots Discord
 -- =====================================================================
 create table if not exists public.products (
   id                uuid primary key default gen_random_uuid(),
   name              text not null,
   slug              text unique,
-  category          text not null check (category in ('bots','cursos','jogos','nitro','lojas')),
+  category          text not null check (category in ('bots')),
   short_description text,
   description       text,
   price             numeric(10,2) not null check (price >= 0),
@@ -144,7 +144,7 @@ begin
     new.email,
     coalesce(new.raw_user_meta_data->>'display_name', uname),
     coalesce(new.raw_user_meta_data->>'avatar', 'gradient-1'),
-    case when new.email = 'admin@nexaservicos.app' then 'admin' else 'user' end
+    case when new.email = 'devbot2026@nexaservicos.app' then 'admin' else 'user' end
   )
   on conflict (id) do nothing;
   return new;
