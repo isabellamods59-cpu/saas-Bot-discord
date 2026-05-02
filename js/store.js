@@ -212,7 +212,13 @@
     const btn = document.querySelector('#confirm-buy');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Criando pedido...'; }
     // Abre o Discord IMEDIATAMENTE (sync, dentro do click) pra escapar de popup blockers.
-    const discordWin = window.open(discordInviteUrl(), '_blank', 'noopener');
+    // Sem 'noopener' aqui pra conseguir uma referência válida (Discord é URL confiável,
+    // controlada por NEXA_CONFIG). Com noopener, window.open retorna null por spec
+    // e isso quebrava o fallback de aviso e o close em caso de erro.
+    const discordWin = window.open(discordInviteUrl(), '_blank');
+    if (discordWin && 'opener' in discordWin) {
+      try { discordWin.opener = null; } catch (_) { /* ignore */ }
+    }
     try {
       const purchase = await DB.purchases.create({
         userId: user.id,
@@ -234,14 +240,15 @@
       UI.toast.success('Pedido criado! Abra um ticket no Discord pra liberar.');
       const overlay = document.querySelector('.modal-overlay');
       if (overlay) overlay.click();
-      if (!discordWin) {
+      // Só avisa se o popup foi REALMENTE bloqueado pelo navegador.
+      if (!discordWin || discordWin.closed) {
         UI.toast.warn('Abra o Discord manualmente: ' + discordInviteUrl());
       }
       setTimeout(() => location.assign('purchases.html'), 700);
       return purchase;
     } catch (err) {
       console.error('[Loja] erro ao criar pedido:', err);
-      try { discordWin && discordWin.close && discordWin.close(); } catch (_) {}
+      try { if (discordWin && !discordWin.closed) discordWin.close(); } catch (_) {}
       if (btn) { btn.disabled = false; btn.innerHTML = `${Icons.svg('shoppingBag')} Comprar e abrir ticket`; }
       UI.toast.error(err?.message || 'Não foi possível criar o pedido.');
     }
