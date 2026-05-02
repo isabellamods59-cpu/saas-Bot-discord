@@ -1,0 +1,24 @@
+{
+  "name": "nexabot-discord",
+  "version": "1.0.0",
+  "description": "Bot Discord avançado, modular e profissional — NexaBot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "mongoose": "^8.1.1",
+    "dotenv": "^16.4.1",
+    "rcon-client": "^4.2.4",
+    "ms": "^2.1.3",
+    "discord-html-transcripts": "^3.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
