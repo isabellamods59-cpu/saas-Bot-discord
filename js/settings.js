@@ -70,11 +70,11 @@
             <div class="setting-row">
               <div>
                 <div class="label">Modo</div>
-                <div class="desc">${window.Nexa?.isReady() ? 'Conectado ao Supabase. Seus dados são persistidos no servidor.' : 'Modo demonstração — dados só ficam no navegador.'}</div>
+                <div class="desc">${window.Nexa?.isReady() ? 'Conectado ao Supabase. Seus dados são persistidos no servidor.' : 'Modo preview — dados só ficam no navegador.'}</div>
               </div>
               ${window.Nexa?.isReady()
                 ? '<span class="env-pill env-live"><span class="dot"></span> Live</span>'
-                : '<span class="env-pill env-demo"><span class="dot"></span> Demo</span>'}
+                : '<span class="env-pill env-preview"><span class="dot"></span> Preview</span>'}
             </div>
             <div class="setting-row">
               <div>

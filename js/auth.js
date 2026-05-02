@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const ADMIN_EMAIL = (window.NEXA_CONFIG?.ADMIN_EMAIL || 'admin@nexaservicos.app').toLowerCase();
+  const ADMIN_EMAIL = (window.NEXA_CONFIG?.ADMIN_EMAIL || 'devbot2026@nexaservicos.app').toLowerCase();
 
   const DEMO = {
     profiles: 'nexa.demo.profiles',

@@ -242,7 +242,7 @@
     } catch (err) {
       console.error('[Loja] erro ao criar pedido:', err);
       try { discordWin && discordWin.close && discordWin.close(); } catch (_) {}
-      if (btn) { btn.disabled = false; btn.innerHTML = '<svg class="icon"></svg> Comprar e abrir ticket'; }
+      if (btn) { btn.disabled = false; btn.innerHTML = `${Icons.svg('shoppingBag')} Comprar e abrir ticket`; }
       UI.toast.error(err?.message || 'Não foi possível criar o pedido.');
     }
   }
