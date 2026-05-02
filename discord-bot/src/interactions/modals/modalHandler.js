@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const { Rcon } = require('rcon-client');
 const { successEmbed, errorEmbed } = require('../../utils/embeds');
 const { getSettings } = require('../../utils/getSettings');
 const { isDev } = require('../../utils/permissions');
@@ -7,6 +8,47 @@ const config = require('../../config');
 
 module.exports = async (interaction, client) => {
   const { customId } = interaction;
+
+  // RCON: connect with password via modal
+  if (customId.startsWith('modal_rcon_connect_')) {
+    const parts = customId.replace('modal_rcon_connect_', '').split('_');
+    const port = parseInt(parts.pop());
+    const host = parts.join('_');
+    const password = interaction.fields.getTextInputValue('rcon_password');
+
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+      const rcon = await Rcon.connect({ host, port, password });
+      await rcon.end();
+
+      const settings = await getSettings(interaction.guild.id);
+      settings.rcon.host = host;
+      settings.rcon.port = port;
+      settings.rcon.password = password;
+      settings.rcon.enabled = true;
+      settings.modules.rcon = true;
+      await settings.save();
+
+      await interaction.editReply({
+        embeds: [successEmbed(`Conectado ao servidor RCON em \`${host}:${port}\`!`)],
+      });
+
+      await saveLog({
+        guildId: interaction.guild.id,
+        action: 'RCON conectado',
+        category: 'rcon',
+        executorId: interaction.user.id,
+        executorTag: interaction.user.tag,
+        details: `${host}:${port}`,
+      });
+    } catch (err) {
+      await interaction.editReply({
+        embeds: [errorEmbed(`Erro ao conectar: ${err.message}`)],
+      });
+    }
+    return;
+  }
 
   // Admin: set message
   if (customId === 'modal_admin_welcome_message') {

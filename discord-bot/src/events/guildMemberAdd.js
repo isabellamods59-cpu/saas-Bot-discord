@@ -33,24 +33,24 @@ module.exports = {
     // Mensagem de boas-vindas
     if (settings.modules.welcome && settings.welcomeChannel) {
       const channel = member.guild.channels.cache.get(settings.welcomeChannel);
-      if (!channel) return;
+      if (channel) {
+        const msg = settings.welcomeMessage
+          .replace(/{user}/g, `<@${member.id}>`)
+          .replace(/{username}/g, member.user.username)
+          .replace(/{tag}/g, member.user.tag)
+          .replace(/{server}/g, member.guild.name)
+          .replace(/{memberCount}/g, member.guild.memberCount);
 
-      const msg = settings.welcomeMessage
-        .replace(/{user}/g, `<@${member.id}>`)
-        .replace(/{username}/g, member.user.username)
-        .replace(/{tag}/g, member.user.tag)
-        .replace(/{server}/g, member.guild.name)
-        .replace(/{memberCount}/g, member.guild.memberCount);
+        const embed = new EmbedBuilder()
+          .setColor(config.colors.success)
+          .setTitle('👋 Novo Membro!')
+          .setDescription(msg)
+          .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+          .setTimestamp()
+          .setFooter({ text: `${member.guild.name} • Membro #${member.guild.memberCount}` });
 
-      const embed = new EmbedBuilder()
-        .setColor(config.colors.success)
-        .setTitle('👋 Novo Membro!')
-        .setDescription(msg)
-        .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-        .setTimestamp()
-        .setFooter({ text: `${member.guild.name} • Membro #${member.guild.memberCount}` });
-
-      await channel.send({ embeds: [embed] }).catch(() => {});
+        await channel.send({ embeds: [embed] }).catch(() => {});
+      }
     }
 
     // Log

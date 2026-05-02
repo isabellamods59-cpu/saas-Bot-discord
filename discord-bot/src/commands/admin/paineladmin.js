@@ -18,9 +18,7 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   cooldown: 10,
 
-  async execute(interaction) {
-    const settings = await getSettings(interaction.guild.id);
-
+  buildPanel(interaction, settings) {
     const embed = new EmbedBuilder()
       .setColor(config.colors.primary)
       .setTitle(`${config.emojis.admin} Painel Administrativo`)
@@ -104,6 +102,12 @@ module.exports = {
       new ButtonBuilder().setCustomId('admin_refresh').setLabel('Atualizar').setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
     );
 
-    await interaction.reply({ embeds: [embed], components: [row1, row2, row3, row4], ephemeral: true });
+    return { embeds: [embed], components: [row1, row2, row3, row4], ephemeral: true };
+  },
+
+  async execute(interaction) {
+    const settings = await getSettings(interaction.guild.id);
+    const payload = module.exports.buildPanel(interaction, settings);
+    await interaction.reply(payload);
   },
 };

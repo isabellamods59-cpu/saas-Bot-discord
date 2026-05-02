@@ -5,6 +5,9 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } = require('discord.js');
 const { Rcon } = require('rcon-client');
 const { successEmbed, errorEmbed, infoEmbed } = require('../../utils/embeds');
@@ -20,8 +23,7 @@ module.exports = {
       sub.setName('conectar')
         .setDescription('Conectar ao servidor Minecraft')
         .addStringOption(opt => opt.setName('host').setDescription('IP do servidor').setRequired(true))
-        .addIntegerOption(opt => opt.setName('porta').setDescription('Porta RCON (padrão: 25575)'))
-        .addStringOption(opt => opt.setName('senha').setDescription('Senha RCON').setRequired(true)))
+        .addIntegerOption(opt => opt.setName('porta').setDescription('Porta RCON (padrão: 25575)')))
     .addSubcommand(sub =>
       sub.setName('comando')
         .setDescription('Enviar comando ao servidor')
@@ -74,38 +76,21 @@ module.exports = {
 async function connectRcon(interaction, settings) {
   const host = interaction.options.getString('host');
   const port = interaction.options.getInteger('porta') || 25575;
-  const password = interaction.options.getString('senha');
 
-  await interaction.deferReply({ ephemeral: true });
+  // Store host/port temporarily for the modal callback
+  const modal = new ModalBuilder()
+    .setCustomId(`modal_rcon_connect_${host}_${port}`)
+    .setTitle('🌐 Senha RCON');
 
-  try {
-    const rcon = await Rcon.connect({ host, port, password });
-    await rcon.end();
+  const passwordInput = new TextInputBuilder()
+    .setCustomId('rcon_password')
+    .setLabel('Senha RCON do servidor')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('Digite a senha RCON...')
+    .setRequired(true);
 
-    settings.rcon.host = host;
-    settings.rcon.port = port;
-    settings.rcon.password = password;
-    settings.rcon.enabled = true;
-    settings.modules.rcon = true;
-    await settings.save();
-
-    await interaction.editReply({
-      embeds: [successEmbed(`Conectado ao servidor RCON em \`${host}:${port}\`!`)],
-    });
-
-    await saveLog({
-      guildId: interaction.guild.id,
-      action: 'RCON conectado',
-      category: 'rcon',
-      executorId: interaction.user.id,
-      executorTag: interaction.user.tag,
-      details: `${host}:${port}`,
-    });
-  } catch (err) {
-    await interaction.editReply({
-      embeds: [errorEmbed(`Erro ao conectar: ${err.message}`)],
-    });
-  }
+  modal.addComponents(new ActionRowBuilder().addComponents(passwordInput));
+  await interaction.showModal(modal);
 }
 
 async function sendCommand(interaction, settings) {

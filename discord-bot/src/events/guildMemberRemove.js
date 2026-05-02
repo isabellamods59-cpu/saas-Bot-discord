@@ -12,24 +12,24 @@ module.exports = {
     // Mensagem de saída
     if (settings.modules.leave && settings.leaveChannel) {
       const channel = member.guild.channels.cache.get(settings.leaveChannel);
-      if (!channel) return;
+      if (channel) {
+        const msg = settings.leaveMessage
+          .replace(/{user}/g, `<@${member.id}>`)
+          .replace(/{username}/g, member.user.username)
+          .replace(/{tag}/g, member.user.tag)
+          .replace(/{server}/g, member.guild.name)
+          .replace(/{memberCount}/g, member.guild.memberCount);
 
-      const msg = settings.leaveMessage
-        .replace(/{user}/g, member.user.username)
-        .replace(/{username}/g, member.user.username)
-        .replace(/{tag}/g, member.user.tag)
-        .replace(/{server}/g, member.guild.name)
-        .replace(/{memberCount}/g, member.guild.memberCount);
+        const embed = new EmbedBuilder()
+          .setColor(config.colors.error)
+          .setTitle('😢 Membro Saiu')
+          .setDescription(msg)
+          .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
+          .setTimestamp()
+          .setFooter({ text: `${member.guild.name} • ${member.guild.memberCount} membros` });
 
-      const embed = new EmbedBuilder()
-        .setColor(config.colors.error)
-        .setTitle('😢 Membro Saiu')
-        .setDescription(msg)
-        .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-        .setTimestamp()
-        .setFooter({ text: `${member.guild.name} • ${member.guild.memberCount} membros` });
-
-      await channel.send({ embeds: [embed] }).catch(() => {});
+        await channel.send({ embeds: [embed] }).catch(() => {});
+      }
     }
 
     // Log

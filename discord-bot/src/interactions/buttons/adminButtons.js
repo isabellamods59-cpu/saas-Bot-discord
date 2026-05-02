@@ -26,8 +26,9 @@ module.exports = async (interaction, client) => {
   if (customId === 'admin_refresh') {
     const command = client.commands.get('paineladmin');
     if (command) {
-      await interaction.deferUpdate();
-      await command.execute(interaction, client);
+      const settings = await getSettings(interaction.guild.id);
+      const payload = command.buildPanel(interaction, settings);
+      await interaction.update(payload);
     }
     return;
   }
