@@ -19,7 +19,7 @@ insert into public.products (name, slug, category, short_description, descriptio
 ('Bot Suporte', 'bot-suporte', 'bots',
  'Bot de FAQ + atendimento automatizado 24/7.',
  'Bot de suporte com base de conhecimento em IA, FAQ inteligente, encaminhamento automático para humanos e métricas de satisfação. Reduz drasticamente carga da equipe.',
- 11.50, 'help', 'Recomendado', false,
+ 11.50, 'help', 'Recomendado', true,
  '["FAQ com IA local", "Atendimento 24/7", "Encaminhamento automático", "Histórico de conversas", "Métricas NPS", "Comandos /faq personalizados"]'::jsonb),
 
 ('Bot Moderação', 'bot-moderacao', 'bots',

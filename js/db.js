@@ -147,7 +147,7 @@
         product_name: product.name,
         product_category: product.category || null,
         price: product.price,
-        period: period || 'mês',
+        period: period || 'vitalício',
         status: 'pendente',
         notes: notes || null,
       };
@@ -253,7 +253,7 @@
   /* ---------------- PREVIEW SEED (offline only) ---------------- */
   // Usado apenas quando Supabase não está configurado (modo preview).
   // Bump esta versão quando mudar o seed para forçar refresh do localStorage.
-  const SEED_VERSION = 'v5-launch-bots';
+  const SEED_VERSION = 'v5-launch-bots-2';
   const SEED_KEY = 'nexa.preview.seedVersion';
 
   function seedDemo() {
@@ -272,7 +272,7 @@
         short_description: 'Bot de FAQ + atendimento automatizado 24/7.',
         description: 'Bot de suporte com base de conhecimento em IA, FAQ inteligente, encaminhamento automático para humanos e métricas de satisfação. Reduz drasticamente carga da equipe.',
         features: ['FAQ com IA local','Atendimento 24/7','Encaminhamento automático','Histórico de conversas','Métricas NPS','Comandos /faq personalizados'],
-        badge: 'Recomendado', recommended: false, active: true, created_at: nowISO() },
+        badge: 'Recomendado', recommended: true, active: true, created_at: nowISO() },
       { id: uuid(), name: 'Bot Moderação', category: 'bots', price: 13.50, icon: 'shield',
         short_description: 'Anti-raid + AutoMod + moderação completa.',
         description: 'Bot avançado anti-raid com captcha, AutoMod customizável, anti-spam, blacklist de palavras, raid mode automático e logs de auditoria detalhados.',

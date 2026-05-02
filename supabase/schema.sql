@@ -64,7 +64,7 @@ create table if not exists public.purchases (
   product_name      text not null,
   product_category  text,
   price             numeric(10,2) not null check (price >= 0),
-  period            text default 'mês',
+  period            text default 'vitalício',
   status            text not null default 'pendente'
                       check (status in ('pendente','aprovado','entregue','cancelado')),
   notes             text,
