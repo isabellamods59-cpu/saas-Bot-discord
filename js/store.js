@@ -209,28 +209,40 @@
 
   async function createOrder(product) {
     if (!user) { UI.toast.error('Faça login para comprar.'); return; }
-    // Abre o Discord IMEDIATAMENTE (sync, dentro do click) pra escapar do bloqueio
-    // de popup. Se a criação do pedido falhar, fechamos a janela.
+    const btn = document.querySelector('#confirm-buy');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Criando pedido...'; }
+    // Abre o Discord IMEDIATAMENTE (sync, dentro do click) pra escapar de popup blockers.
     const discordWin = window.open(discordInviteUrl(), '_blank', 'noopener');
     try {
-      const order = await DB.purchases.create({
+      const purchase = await DB.purchases.create({
         userId: user.id,
         product,
         period: product.period || 'vitalício',
       });
       await Activity.record({
-        userId: user.id, type: 'purchase',
-        message: `Pedido criado para ${product.name} (R$ ${Number(product.price).toFixed(2).replace('.', ',')}).`,
+        userId: user.id, type: 'purchase_created',
+        message: `Pedido criado para ${product.name}.`,
+        data: { purchase_id: purchase.id, product_id: product.id, price: product.price },
       });
-      UI.toast.success('Pedido criado! Abra o ticket no Discord pra liberar.');
+      try {
+        await Notifications.push({
+          userId: user.id, type: 'success',
+          title: 'Pedido criado',
+          message: `Seu pedido para ${product.name} está pendente. Abra um ticket no Discord pra liberar.`,
+        });
+      } catch (_) { /* notificação é opcional */ }
+      UI.toast.success('Pedido criado! Abra um ticket no Discord pra liberar.');
       const overlay = document.querySelector('.modal-overlay');
       if (overlay) overlay.click();
-      setTimeout(() => { window.location.assign('purchases.html'); }, 600);
-      return order;
+      if (!discordWin) {
+        UI.toast.warn('Abra o Discord manualmente: ' + discordInviteUrl());
+      }
+      setTimeout(() => location.assign('purchases.html'), 700);
+      return purchase;
     } catch (err) {
       console.error('[Loja] erro ao criar pedido:', err);
-      // pedido falhou — fecha a aba do Discord pra não confundir o usuário
       try { discordWin && discordWin.close && discordWin.close(); } catch (_) {}
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg class="icon"></svg> Comprar e abrir ticket'; }
       UI.toast.error(err?.message || 'Não foi possível criar o pedido.');
     }
   }
